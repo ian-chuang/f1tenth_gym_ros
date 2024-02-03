@@ -1,6 +1,58 @@
 # F1TENTH gym environment ROS2 communication bridge
 This is a containerized ROS communication bridge for the F1TENTH gym environment that turns it into a simulation in ROS2.
 
+# Revised Instructions for UCDavis F1Tenth
+
+This guide will walk you through the steps to set up and run the F1Tenth Gym ROS simulation using Docker and VS Code. Follow these instructions to get started.
+
+## Prerequisites
+
+1. **GitHub Desktop**: Install GitHub Desktop from [here](https://desktop.github.com/).
+2. **Docker Desktop**: Install Docker Desktop from [here](https://www.docker.com/products/docker-desktop).
+3. **VS Code**: Install Visual Studio Code from [here](https://code.visualstudio.com/).
+4. **VS Code Extensions**: Install the following extensions in VS Code:
+    - Remote Development extension pack
+    - Docker extension
+
+## Setup
+
+1. **Clone the Repository:**
+    - Open GitHub Desktop.
+    - Clone the repository [https://github.com/ian-chuang/f1tenth_gym_ros](https://github.com/ian-chuang/f1tenth_gym_ros).
+
+2. **Open the Repository in VS Code:**
+    - Open VS Code.
+    - Open the cloned repository using `File -> Open Folder`.
+
+3. **Start Docker Container:**
+    - Open the terminal in VS Code.
+    - Navigate to the repository folder using the `cd /path/to/f1tenth_gym_ros` command.
+    - Type `docker-compose up` in the terminal.
+
+4. **Attach VS Code to Docker Container:**
+    - Navigate to the Docker tab in VS Code.
+    - Right-click on the container named `f1tenth_gym_ros`.
+    - Press "Attach Visual Studio Code" to open a VS Code window within your container.
+
+5. **Open Simulation Workspace:**
+    - In the new VS Code window, go to `File -> Open Folder`.
+    - Enter the path `/sim_ws` and press Enter.
+
+6. **Launch Gym Bridge:**
+    - Open a terminal in VS Code (`Terminal -> New Terminal`).
+    - Enter the command `ros2 launch f1tenth_gym_ros gym_bridge_launch.py`.
+
+7. **Access RViz Simulation:**
+    - Open a web browser and go to [http://localhost:8080/vnc.html](http://localhost:8080/vnc.html).
+    - Press "Connect" to view the RViz window of the simulation.
+
+8. **Teleop Car in Simulation:**
+    - Open a new terminal in the VS Code window of the container.
+    - Enter the command `ros2 run teleop_twist_keyboard teleop_twist_keyboard`.
+    - Press the command in the terminal window to control the car in the simulation.
+
+# ORIGINAL INSTRUCTIONS BELOW
+
 # Installation
 
 **Supported System:**
