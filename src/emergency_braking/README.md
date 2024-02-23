@@ -15,7 +15,7 @@ where
 We obtain:
 
 $$r_i$$ by using the current measurements from the LaserScan message
- by mapping the vehicle's current longitudinal velocity onto each scan beam's angle by using 
+ $$r_i$$ by mapping the vehicle's current longitudinal velocity onto each scan beam's angle by using 
 , where 
  is the forward speed in the vehicle's frame of reference (obtained from Odometry message), and 
  is the beam angle obtained from LaserScan messages.
