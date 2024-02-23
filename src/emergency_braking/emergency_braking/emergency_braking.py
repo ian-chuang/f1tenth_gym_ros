@@ -15,7 +15,7 @@ class SafetyNode(Node):
 	The class that handles emergency braking.
 	"""
 	def __init__(self):
-		super().__init__('emergency_braking_node')
+		super().__init__('emergency_braking')
 		"""
 		One publisher should publish to the /drive topic with a AckermannDriveStamped drive message.
 
@@ -46,7 +46,7 @@ class SafetyNode(Node):
 		# Update the speed of the car
 		self.publisher_ = self.create_publisher(AckermannDriveStamped, 'drive', 1000)
 		self.teleop_publisher_ = self.create_publisher(AckermannDriveStamped, 'teleop', 1000)
-		self.bool_publisher_ = self.create_publisher(Bool, 'emergency_breaking', 1000)
+		self.bool_publisher_ = self.create_publisher(Bool, 'emergency_braking', 1000)
 
 	def odom_callback(self, odom_msg):
 		# Update current speed
