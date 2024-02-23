@@ -6,7 +6,7 @@ We approximate the time to collision using Instantaneous Time to Collision (iTTC
 
 $$iTTC_i(t) = \frac{r_i(t)}{[-\dot{r}i(t)]+}$$
 
-where $$r_i$$ is the instantaneous range measurements and $$\dot{r}$$ is the current range rates. The operator $$[x]_i$$ is defined as $$max(x,0)$$.
+where $r_i$ is the instantaneous range measurements and $$\dot{r}$$ is the current range rates. The operator $[x]_i$ is defined as $max(x,0)$.
 
 We obtain:
 
