@@ -6,17 +6,10 @@ We approximate the time to collision using Instantaneous Time to Collision (iTTC
 
 $$iTTC_i(t) = \frac{r_i(t)}{[-\dot{r}i(t)]+}$$
 
-where 
- is the instantaneous range measurements and 
- is the current range rates. The operator 
- is defined as 
-.
+where $$r_i$$ is the instantaneous range measurements and $$\dot{r}$$ is the current range rates. The operator $$[x]_i$$ is defined as $$max(x,0)$$.
 
 We obtain:
 
 $$r_i$$ by using the current measurements from the LaserScan message
- $$r_i$$ by mapping the vehicle's current longitudinal velocity onto each scan beam's angle by using 
-, where 
- is the forward speed in the vehicle's frame of reference (obtained from Odometry message), and 
- is the beam angle obtained from LaserScan messages.
-The code has been implemented in both Python3 (under scripts/wall_follow_node.py) and C++ (under src/safety_node.cpp). Both have the same functionalities.
+$$r_i$$ by mapping the vehicle's current longitudinal velocity onto each scan beam's angle by using $$v_i cos(\theta)$$, where $$v_x$$ is the forward speed in the vehicle's frame of reference (obtained from Odometry message), and $$\theta_i$$ is the beam angle obtained from LaserScan messages.
+The code has been implemented in both Python3 (under scripts/wall_follow_node.py).
