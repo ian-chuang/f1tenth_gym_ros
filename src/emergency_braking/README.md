@@ -12,7 +12,7 @@ We obtain:
 - $r_i$ by using the current measurements from the `LaserScan` message 
 - $\dot{r}_i$ by mapping the vehicle's current longitudinal velocity onto each scan beam's angle by using $v_x\cos(\theta_i)$, where $v_x$ is the forward speed in the vehicle's frame of reference (obtained from `Odometry` message), and $\theta_i$ is the beam angle obtained from `LaserScan` messages.
 
-The code has been implementedin Python3 (under `scripts/wall_follow_node.py`). [you can see their implementation here](https://github.com/CL2-UWaterloo/f1tenth_ws/tree/main/src/safety_node)
+The code has been implemented in Python3 (under `scripts/wall_follow_node.py`). [you can see their implementation here](https://github.com/CL2-UWaterloo/f1tenth_ws/tree/main/src/safety_node)
 
 ### Starting Up the Node
 - To start up the Python node, run `ros2 run safety_node safety_node.py`
