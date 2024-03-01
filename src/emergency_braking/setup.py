@@ -13,9 +13,9 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='root',
-    maintainer_email='xodbsdl95@gmail.com',
-    description='F1tenth Automatic Emergency Braking at UCD',
+    maintainer='Yoon',
+    maintainer_email='taeyoonkim1995@gmail.com',
+    description='F1tenth Emergency Braking (AEB) at UCD',
     license='MIT',
     tests_require=['pytest'],
     entry_points={

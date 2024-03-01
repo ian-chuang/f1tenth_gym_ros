@@ -3,18 +3,16 @@
 <package format="3">
   <name>emergency_braking</name>
   <version>0.0.0</version>
-  <description>F1tenth Automatic Emergency Braking at UCD</description>
-  <maintainer email="xodbsdl95@gmail.com">root</maintainer>
+  <description>F1tenth Emergency Braking (AEB) at UCD</description>
+  <maintainer email="taeyoonkim1995@gmail.com">Yoon</maintainer>
   <license>MIT</license>
-
-  <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>ament_cmake_python</buildtool_depend>
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
-  <depend>ackermann_msgs</depend>
+  <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend>ackermann_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
