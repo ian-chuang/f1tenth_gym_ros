@@ -14,9 +14,9 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='root',
-    maintainer_email='iantc104@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    maintainer_email='xodbsdl95@gmail.com',
+    description='F1tenth Automatic Emergency Braking at UCD',
+    license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
