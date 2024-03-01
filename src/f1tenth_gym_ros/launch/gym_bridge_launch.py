@@ -29,6 +29,8 @@ import yaml
 
 def generate_launch_description():
     ld = LaunchDescription()
+
+    # sim config
     config = os.path.join(
         get_package_share_directory('f1tenth_gym_ros'),
         'config',
@@ -38,6 +40,15 @@ def generate_launch_description():
     has_opp = config_dict['bridge']['ros__parameters']['num_agent'] > 1
     teleop = config_dict['bridge']['ros__parameters']['kb_teleop']
 
+    # particle filter config
+    localize_config = os.path.join(
+        get_package_share_directory('f1tenth_gym_ros'),
+        'config',
+        'localize.yaml'
+    )
+    localize_config_dict = yaml.safe_load(open(localize_config, 'r'))
+
+    # sim nodes
     bridge_node = Node(
         package='f1tenth_gym_ros',
         executable='gym_bridge',
@@ -83,7 +94,16 @@ def generate_launch_description():
         remappings=[('/robot_description', 'opp_robot_description')]
     )
 
+    # particle filter node
+    pf_node = Node(
+        package='particle_filter',
+        executable='particle_filter',
+        name='particle_filter',
+        parameters=[localize_config]
+    )
+
     # finalize
+    # sim nodes
     ld.add_action(rviz_node)
     ld.add_action(bridge_node)
     ld.add_action(nav_lifecycle_node)
@@ -91,5 +111,7 @@ def generate_launch_description():
     ld.add_action(ego_robot_publisher)
     if has_opp:
         ld.add_action(opp_robot_publisher)
+    # particle filter node
+    ld.add_action(pf_node)
 
     return ld

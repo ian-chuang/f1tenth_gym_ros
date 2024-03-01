@@ -35,7 +35,11 @@ RUN apt-get update --fix-missing && \
                        ros-foxy-rviz2 \
                        python3-venv 
 RUN apt-get -y dist-upgrade
-RUN pip3 install transforms3d
+
+# python dependencies
+RUN pip3 install --upgrade pip
+RUN pip3 install transforms3d \ 
+                 cython
 
 # f1tenth gym
 RUN git clone https://github.com/f1tenth/f1tenth_gym
@@ -44,15 +48,16 @@ RUN cd f1tenth_gym && \
 
 # Raceline Optimization
 RUN git clone https://github.com/ian-chuang/Raceline-Optimization
-WORKDIR '/Raceline-Optimization'
-# Create a virtual environment
-RUN python3 -m venv venv
-# Activate the virtual environment and install requirements
-RUN . venv/bin/activate && \
-    pip install --upgrade pip && \
-    pip install -r requirements.txt
+# Create a virtual environment and install dependencies
+RUN cd Raceline-Optimization && \ 
+    python3 -m venv venv && \
+    source venv/bin/activate && \
+    pip3 install -r requirements.txt
 
-WORKDIR '/'
+# particle filter dependencies
+RUN git clone https://github.com/f1tenth/range_libc
+RUN cd range_libc/pywrapper && \
+    ./compile.sh
 
 # ros2 gym bridge
 RUN mkdir -p sim_ws/src/f1tenth_gym_ros
