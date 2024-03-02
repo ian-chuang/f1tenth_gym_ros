@@ -3,7 +3,7 @@
 To use this node on the physical car, run
 
 ```bash
-ros2 launch pure_pursuit pure_pursuit.launch.py
+ros2 launch pure_pursuit pure_pursuit_launch.py
 ```
 
 This will use the parameters from the config file `config/config.yaml`
