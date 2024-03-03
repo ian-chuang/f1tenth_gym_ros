@@ -39,7 +39,7 @@ class SafetyNode(Node):
 
 		self.odom_subscription = self.create_subscription(
 			Odometry,
-			'/odom', # this is more reliable than /pf/pose/odom
+			'ego_racecar/odom', # this is more reliable than /pf/pose/odom
 			self.odom_callback,
 			10
 		)
