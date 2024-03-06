@@ -1,3 +1,6 @@
 [submodule "src/particle_filter"]
 	path = src/particle_filter
 	url = https://github.com/ian-chuang/particle_filter.git
+[submodule "src/f1tenth_system"]
+	path = src/f1tenth_system
+	url = https://github.com/ian-chuang/f1tenth_system.git
