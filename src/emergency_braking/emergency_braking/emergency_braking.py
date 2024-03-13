@@ -11,22 +11,9 @@ from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 
 
 class SafetyNode(Node):
-	"""
-	The class that handles emergency braking.
-	"""
 	def __init__(self):
 		super().__init__('emergecny_braking')
 		print("Emergency Braking Node Started.")
-		"""
-		One publisher should publish to the /drive topic with a AckermannDriveStamped drive message.
-
-		You should also subscribe to the /scan topic to get the LaserScan messages and
-		the /ego_racecar/odom topic to get the current speed of the vehicle.
-
-		The subscribers should use the provided odom_callback and scan_callback as callback methods
-
-		NOTE that the x component of the linear velocity in odom is the speed
-		"""
 
 		self.speed = 0.0
 		# Create ROS subscribers and publishers.
@@ -37,9 +24,11 @@ class SafetyNode(Node):
 			10
 		)
 
+		# 'ego_racecar/odom' for sim
+		# /odom for physical car
 		self.odom_subscription = self.create_subscription(
 			Odometry,
-			'ego_racecar/odom', # this is more reliable than /pf/pose/odom
+			'/odom', # this is more reliable than /pf/pose/odom
 			self.odom_callback,
 			10
 		)
