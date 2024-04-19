@@ -21,138 +21,115 @@ class ReactiveFollowGap : public rclcpp::Node {
 // This is just a template, you are free to implement your own node!
 
     public:
-        ReactiveFollowGap() : Node("reactive_node")
+        ReactiveFollowGap() : Node("reactive_node_solo")
         {
             /// Create ROS subscribers and publishers
             drive_publisher = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>(drive_topic, 1);
             scan_sub = this->create_subscription<sensor_msgs::msg::LaserScan>(lidarscan_topic, 1, std::bind(&ReactiveFollowGap::lidar_callback, this, _1));
-            gap_sub = this->create_subscription<std_msgs::msg::Bool>(decision_topic, 1, std::bind(&ReactiveFollowGap::gap_callback, this, _1));
-            car_index_sub = this->create_subscription<std_msgs::msg::Int16>(index_topic, 1, std::bind(&ReactiveFollowGap::index_callback, this, _1));
-
-            //Read in velocity points
-            std::string velocity_file_name = "src/f1tenth_icra2022/pure_pursuit_pkg/pure_pursuit_pkg/racelines/temp/velocity.csv";
-            //std::string velocity_file_name = "src/pure_pursuit_pkg/pure_pursuit_pkg/racelines/temp/velocity.csv";
-            std::vector<float> row;
-            std::string line, number;
-            std::fstream file (velocity_file_name, std::ios::in);
-            if(file.is_open())
-            {
-                std::cout<<"Velocity file open!"<<std::endl;
-                while(getline(file, line))
-                {
-                    std::stringstream str(line);
-                    while(getline(str, number, ','))
-                        velocity_points.push_back(std::stof(number));
-                }
-            }
-            else{ 
-                std::cout<<"ERROR_ERROR_ERROR"<<std::endl;
-                std::cout<<"OBS_DETECT.CPP Failed to open spline csv"<<std::endl;
-            }
-
         }
-        bool use_gap = false;
 
     private:
         // variables
         int window_size = 3; //This is the size of the "window" for the window mean
         float max_range_threshold = 10.0; //Anything beyond this value is set to this value
-        float max_drive_range_threshold = 5.0;
+        float max_drive_range_threshold = 9.0;
 
-        float car_width = .60; //Meters
-
-        float angle_cutoff = 1.5; //radians
+        float car_width_bubble = 1.2; //Changes the size of the bubble set close
+        float car_width_disp = 0.5; //Changes the size of disparity extension
+        float angle_cutoff = 2.1;//1.5; //radians
         float disp_threshold = .4;//meter
         float bubble_dist_threshold = 6; //meteres
-        std::vector<float> velocity_points; 
-        int car_spline_index = 0;
+
+        float vel_max = 3.0; // m/s
+        float vel_min = 2.0; // m/s
+        float max_drive_angle = .52; //Rads
         
 
         std::string lidarscan_topic = "/scan";
         std::string drive_topic = "/drive";
-        std::string decision_topic = "/use_obs_avoid";
-        std::string index_topic = "/car_index";
+
 
         /// Create ROS subscribers and publishers
         rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub;
-        rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr gap_sub;
         rclcpp::Publisher<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr drive_publisher;
-        rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr car_index_sub;
-
-
 
         void lidar_callback(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan_msg)
         {
-            if (use_gap==true){
-                std::cout<<"USING GAP FOLLOW"<<std::endl;
-                //Load in range information from message
-                int num_readings = scan_msg->ranges.size();
-                float ranges_raw[1081];
-                copy(std::begin(scan_msg->ranges), std::end(scan_msg->ranges), std::begin(ranges_raw));
+            
+            std::cout<<"USING GAP FOLLOW"<<std::endl;
+            //Load in range information from message
+            int num_readings = scan_msg->ranges.size();
+            float ranges_raw[1081];
+            copy(std::begin(scan_msg->ranges), std::end(scan_msg->ranges), std::begin(ranges_raw));
 
-                //Create array of angles for the raw ranges
-                std::vector<float> angles_raw;
-                float cur_angle;
-                float angle_increment = scan_msg->angle_increment;
+            //Create array of angles for the raw ranges
+            std::vector<float> angles_raw;
+            float cur_angle;
+            float angle_increment = scan_msg->angle_increment;
 
-                for(int i = 0; i < num_readings; i++){
-                    cur_angle = (scan_msg->angle_increment * i) + (scan_msg->angle_min);
-                    angles_raw.push_back(cur_angle);
-                }
-
-                //Find the start and end of the angle cutoff
-                //Reduces the number of ranges looked at
-                int cutoff_start_idx;
-                int cutoff_end_idx;
-                int num_readings_p;
-                for(int i = 0; i < num_readings; i++){
-                    if (angles_raw[i] > (angle_cutoff * -1.0)){
-                        cutoff_start_idx = i;
-                        break;
-                    }
-                }
-                for(int i = 0; i < num_readings; i++){
-                    if (angles_raw[i] > (angle_cutoff)){
-                        cutoff_end_idx = i;
-                        break;
-                    }
-                }
-                num_readings_p = cutoff_end_idx - cutoff_start_idx;
-
-                //Create new "processed" angle and ranges vectors as a subset of the raw ranges and angles
-                std::vector<float> ranges_p(&ranges_raw[cutoff_start_idx], &ranges_raw[cutoff_end_idx]);
-                std::vector<float> angles_p(&angles_raw[cutoff_start_idx], &angles_raw[cutoff_end_idx]);
-
-                preprocess_lidar(ranges_p, num_readings_p); //updates ranges_p
-
-                int num_disp;
-                std::vector<int> disp_idx;
-                num_disp = find_disparities(disp_idx, ranges_p, num_readings_p);
-                std::vector<float> ranges_p_clean = ranges_p;
-                set_disparity(ranges_p, num_readings_p, disp_idx, num_disp, angle_increment, ranges_p_clean);  // Set all values at the disparity to the value of the closest point
-                set_close_bubble(ranges_p, angles_p, num_readings_p, angle_increment);
-                int *gap_idxes = find_max_gap(ranges_p, num_readings_p); //find the drive idx from the max gap
-
-                float drive_angle;
-                int drive_idx {0};
-                drive_angle = find_drive_angle(ranges_p, angles_p, gap_idxes, drive_idx);
-
-                bool going_to_hit=false;
-                going_to_hit = corner_safety_check(ranges_raw, angles_raw, drive_angle, num_readings, angle_increment);
-
-                // Publish Drive message
-                auto drive_msg = ackermann_msgs::msg::AckermannDriveStamped();
-                if (going_to_hit==false){
-                    drive_msg.drive.steering_angle = drive_angle;
-                }
-                else{
-                    drive_msg.drive.steering_angle = 0;
-
-                }
-                float spline_velocity = velocity_points[car_spline_index]; 
-                drive_msg.drive.speed = drive_speed_calc(ranges_p, angles_p, num_readings_p, spline_velocity, (spline_velocity-2.0)); //Scales the velocity from the pure pursuit velocity to some lower bound, depending on the distance of range readings... maybe steer angle would be better? 
-                drive_publisher->publish(drive_msg);
+            for(int i = 0; i < num_readings; i++){
+                cur_angle = (scan_msg->angle_increment * i) + (scan_msg->angle_min);
+                angles_raw.push_back(cur_angle);
             }
+
+            //Find the start and end of the angle cutoff
+            //Reduces the number of ranges looked at
+            int cutoff_start_idx;
+            int cutoff_end_idx;
+            int num_readings_p;
+            for(int i = 0; i < num_readings; i++){
+                if (angles_raw[i] > (angle_cutoff * -1.0)){
+                    cutoff_start_idx = i;
+                    break;
+                }
+            }
+            for(int i = 0; i < num_readings; i++){
+                if (angles_raw[i] > (angle_cutoff)){
+                    cutoff_end_idx = i;
+                    break;
+                }
+            }
+            num_readings_p = cutoff_end_idx - cutoff_start_idx;
+
+            //Create new "processed" angle and ranges vectors as a subset of the raw ranges and angles
+            std::vector<float> ranges_p(&ranges_raw[cutoff_start_idx], &ranges_raw[cutoff_end_idx]);
+            std::vector<float> angles_p(&angles_raw[cutoff_start_idx], &angles_raw[cutoff_end_idx]);
+
+            preprocess_lidar(ranges_p, num_readings_p); //updates ranges_p
+
+            int num_disp;
+            std::vector<int> disp_idx;
+            num_disp = find_disparities(disp_idx, ranges_p, num_readings_p);
+            std::vector<float> ranges_p_clean = ranges_p;
+            set_disparity(ranges_p, num_readings_p, disp_idx, num_disp, angle_increment, ranges_p_clean);  // Set all values at the disparity to the value of the closest point
+            set_close_bubble(ranges_p, angles_p, num_readings_p, angle_increment);
+            int *gap_idxes = find_max_gap(ranges_p, num_readings_p); //find the drive idx from the max gap
+
+            float drive_angle;
+            int drive_idx {0};
+            drive_angle = find_drive_angle(ranges_p, angles_p, gap_idxes, drive_idx);
+
+            bool going_to_hit=false;
+            going_to_hit = corner_safety_check(ranges_raw, angles_raw, drive_angle, num_readings, angle_increment);
+
+            // Publish Drive message
+            if (going_to_hit==true){
+                drive_angle = 0.0;
+            }
+            if (drive_angle > max_drive_angle){
+                drive_angle = max_drive_angle;
+            }
+            if (drive_angle < -1 * max_drive_angle){
+                drive_angle = -1 * max_drive_angle;
+            }
+
+            auto drive_msg = ackermann_msgs::msg::AckermannDriveStamped();
+            drive_msg.drive.steering_angle = drive_angle;
+            std::cout<<"Drive angle :"<<drive_angle<<std::endl;
+            std::cout<<"Drive idx : "<<drive_idx<<std::endl;
+            drive_msg.drive.speed = 0.0; drive_speed_calc(drive_angle, vel_max, vel_min); //Scales the velocity from the pure pursuit velocity to some lower bound, depending on the distance of range readings... maybe steer angle would be better? 
+            drive_publisher->publish(drive_msg);
+            
         }
 
         void preprocess_lidar(std::vector<float>& ranges, int num_readings)
@@ -255,7 +232,6 @@ class ReactiveFollowGap : public rclcpp::Node {
             int deepest_idx;
             float drive_angle;
 
-
             for(int i = gap_idx[0]; i<gap_idx[1]; i++){
                 if(ranges[i] > deepest_val){
                     deepest_val = ranges[i];
@@ -325,7 +301,7 @@ class ReactiveFollowGap : public rclcpp::Node {
                   continue;
                 }
 
-                theta = atan2((car_width /2.0), bubble_dist);
+                theta = atan2((car_width_disp /2.0), bubble_dist);
                 n_float = theta/angle_increment; //Is 270 radians!!!!
                 n = static_cast<int>(n_float);
                 //RCLCPP_INFO(this->get_logger(), "Bubble idx [%d], N value [%d], Theta [%f],  Bubble range [%f]", bubble_idx, n, theta, ranges_clean[bubble_idx]);
@@ -379,10 +355,10 @@ class ReactiveFollowGap : public rclcpp::Node {
             bubble_idx = close_idx;
 
             //Use trig to find number of points to eliminate
-            theta = atan2((car_width /2.0), ranges[bubble_idx]);
+            theta = atan2((car_width_bubble /2.0), ranges[bubble_idx]);
             n_float = theta/angle_increment; //Is 270 radians!!!!
             n = static_cast<int>(n_float);
-            //RCLCPP_INFO(this->get_logger(), "Bubble CLOSE- idx [%d], angle[%f], N value [%f], range [%f]", bubble_idx, angles[bubble_idx], n_float, ranges[bubble_idx]);
+            RCLCPP_INFO(this->get_logger(), "Bubble CLOSE- idx [%d], angle[%f], N value [%f], range [%f]", bubble_idx, angles[bubble_idx], n_float, ranges[bubble_idx]);
 
 
             //Cases to fix out of bounds errors
@@ -405,38 +381,8 @@ class ReactiveFollowGap : public rclcpp::Node {
             }
         }
 
-        float drive_speed_calc(std::vector<float>& ranges, std::vector<float>& angles, int num_readings, float max_drive_speed, float min_drive_speed){
-            //Get average range in front facing window
-            float drive_speed;
-
-            float window_size = 0.174533; //10 degrees to both sides
-            int window_start_idx;
-            int window_end_idx;
-
-           // Find the start and end idx of the window
-            for (int i = 0; i<num_readings; i++){
-                if (angles[i] > (window_size * -1)){
-                    window_start_idx = i;
-                    break;
-                }
-            }
-            for (int i = num_readings; i > -1; i--){
-                if (angles[i] < window_size){
-                    window_end_idx = i;
-                    break;
-                }
-            }
-
-            // Get average over front facing window
-            int num_window_readings = window_end_idx - window_start_idx;
-            float num_window_readings_float = static_cast<float>(num_window_readings);
-            float mean = 0.0;
-
-            for (int i = window_start_idx; i <= window_end_idx; i++){
-                mean += ranges[i];
-            }
-            mean = mean / num_window_readings_float;
-            drive_speed = min_drive_speed +  (max_drive_speed - min_drive_speed) * mean/max_range_threshold;
+        float drive_speed_calc(float steer_angle, float max_drive_speed, float min_drive_speed){
+            float drive_speed = max_drive_speed - ((abs(steer_angle)/max_drive_angle) * (max_drive_speed - min_drive_speed));          
 
             return drive_speed;
         }
@@ -446,7 +392,6 @@ class ReactiveFollowGap : public rclcpp::Node {
 
             float safety_range_threshold = .5;
             float drive_activation_angle = .20632; //Set to 25 deg right now
-            //float drive_activation_angle = .43632; //Set to 25 deg right now
             float window_size = 0.174533; //10 degrees
             float window_start = 1.5708;
 
@@ -484,18 +429,6 @@ class ReactiveFollowGap : public rclcpp::Node {
                 }
             }
             return crashing;
-        }
-
-
-        void gap_callback(const std_msgs::msg::Bool::ConstSharedPtr gap_bool)
-        {
-            use_gap = gap_bool->data;
-        }
-
-        void index_callback(const std_msgs::msg::Int16::ConstSharedPtr index_val)
-        {
-            car_spline_index = index_val->data;
-            std::cout<<"Got index value: "<<car_spline_index<<std::endl;
         }
 
 };
