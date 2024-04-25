@@ -30,7 +30,7 @@ class ReactiveFollowGap : public rclcpp::Node {
             car_index_sub = this->create_subscription<std_msgs::msg::Int16>(index_topic, 1, std::bind(&ReactiveFollowGap::index_callback, this, _1));
 
             //Read in velocity points
-            std::string velocity_file_name = "src/f1tenth_icra2022/pure_pursuit_pkg/pure_pursuit_pkg/racelines/temp/velocity.csv";
+            std::string velocity_file_name = "/sim_ws/src/pure_pursuit_pkg/pure_pursuit_pkg/racelines/temp/velocity.csv";
             //std::string velocity_file_name = "src/pure_pursuit_pkg/pure_pursuit_pkg/racelines/temp/velocity.csv";
             std::vector<float> row;
             std::string line, number;

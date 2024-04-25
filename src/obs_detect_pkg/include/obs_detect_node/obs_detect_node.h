@@ -36,7 +36,6 @@ public:
 
     ///////////USER INPUT////////////
     //Flags
-    bool sim = false;  // Set flag true for simulation, false for real
     bool publish_rviz = true;
     bool publish_thetas = false;
 
@@ -84,26 +83,14 @@ public:
 
 
 private:
-    //Spline points location
-    std::string spline_file_name = "src/f1tenth_icra2022/pure_pursuit_pkg/pure_pursuit_pkg/racelines/temp/spline.csv";
-    //std::string spline_file_name = "src/pure_pursuit_pkg/pure_pursuit_pkg/racelines/temp/spline.csv";
-
 
     //Publishers 
-    std::string coll_grid_topic = "/coll_grid_pub_rviz";
-    std::string coll_path_topic = "/coll_path_pub_rviz";
-    std::string use_avoid_topic = "/use_obs_avoid";
-    std::string gap_theta_topic = "/gap_thetas";
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr grid_pub;
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr path_pub;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr use_avoid_pub;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr gap_theta_pub;
 
     //Subscribers
-    std::string scan_topic = "/scan";
-    std::string pose_topic_sim = "ego_racecar/odom";
-    std::string pose_topic_real = "pf/pose/odom";
-    std::string drive_topic = "/drive";
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr pose_sub_;
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
     rclcpp::Subscription<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr drive_sub_;

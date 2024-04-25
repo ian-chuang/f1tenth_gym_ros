@@ -11,7 +11,7 @@
 //#include "std_msgs/msg/MultiArrayDimension.hpp"
 #include "geometry_msgs/msg/pose_array.hpp"
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
-
+ 
 // Destructor of the OBS_DETECT classFalse
 OBS_DETECT::~OBS_DETECT() {
     // Do something in here, free up used memory, print message, etc.
@@ -19,6 +19,25 @@ OBS_DETECT::~OBS_DETECT() {
 }
 // Constructor of the OBS_DETECT class
 OBS_DETECT::OBS_DETECT(): rclcpp::Node("obs_detect_node"){
+    // initialise parameters
+    this->declare_parameter("spline_file_name", "spline_points.csv");
+    this->declare_parameter("coll_grid_topic", "/coll_grid_pub_rviz");
+    this->declare_parameter("coll_path_topic", "/coll_path_pub_rviz");
+    this->declare_parameter("use_avoid_topic", "/use_obs_avoid");
+    this->declare_parameter("gap_theta_topic", "/gap_thetas");
+    this->declare_parameter("scan_topic", "/scan");
+    this->declare_parameter("drive_topic", "/drive");
+    this->declare_parameter("pose_topic", "ego_racecar/odom");
+
+    std::string spline_file_name = this->get_parameter("spline_file_name").as_string();
+    std::string coll_grid_topic = this->get_parameter("coll_grid_topic").as_string();
+    std::string coll_path_topic = this->get_parameter("coll_path_topic").as_string();
+    std::string use_avoid_topic = this->get_parameter("use_avoid_topic").as_string();
+    std::string gap_theta_topic = this->get_parameter("gap_theta_topic").as_string();
+    std::string scan_topic = this->get_parameter("scan_topic").as_string();
+    std::string drive_topic = this->get_parameter("drive_topic").as_string();
+    std::string pose_topic = this->get_parameter("pose_topic").as_string();
+
     // ROS publishers
     grid_pub = this->create_publisher<nav_msgs::msg::OccupancyGrid>(coll_grid_topic,1);
     path_pub = this->create_publisher<nav_msgs::msg::OccupancyGrid>(coll_path_topic,1);
@@ -28,12 +47,11 @@ OBS_DETECT::OBS_DETECT(): rclcpp::Node("obs_detect_node"){
     // ROS subscribers
     scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(scan_topic, 1, std::bind(&OBS_DETECT::scan_callback, this, std::placeholders::_1));
     drive_sub_ = this->create_subscription<ackermann_msgs::msg::AckermannDriveStamped>(drive_topic, 1, std::bind(&OBS_DETECT::drive_callback, this, std::placeholders::_1));
-    if(sim == true){
-        pose_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(pose_topic_sim, 1, std::bind(&OBS_DETECT::pose_callback, this, std::placeholders::_1));
-    }
-    else{
-        pose_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(pose_topic_real, 1, std::bind(&OBS_DETECT::pose_callback, this, std::placeholders::_1));
-    }
+
+    pose_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(pose_topic, 1, std::bind(&OBS_DETECT::pose_callback, this, std::placeholders::_1));
+    
+
+
 
     //Read in spline points
     std::vector<float> row;
