@@ -25,18 +25,43 @@ class PurePursuit(Node):
     def __init__(self):
         super().__init__('pure_pursuit_node')
 
-        # User inputs
-        traj_csv = "levine.csv" #Name of csv in racelines directory
-        tum_raceline = False
-        create_custom_vel_profile = True
-        self.sim_flag = True  # Set flag True for simulation, False for real
-        self.speed_override = None #Set to None for there to be no speed override
-        self.publish_rviz = True
+        # declare parameters
+        self.declare_parameter("trajectory_csv", "/sim_ws/src/f1tenth_gym_ros/racelines/levine.csv")
+        self.declare_parameter("publish_rviz", True)
+        self.declare_parameter("pp_steer_L_fast", 2.5)
+        self.declare_parameter("pp_steer_L_slow", 1.25)
+        self.declare_parameter("kp_fast", 0.35)
+        self.declare_parameter("kp_slow", 0.5)
+        self.declare_parameter("L_threshold_speed", 4.0)
+        self.declare_parameter("odom_topic", "ego_racecar/odom")
+        self.declare_parameter("pp_current_goal_topic", "pp_current_goal_rviz")
+        self.declare_parameter("pp_spline_topic", "pp_spline_rviz")
+        self.declare_parameter("color_points_topic", "color_points_rviz")
+        self.declare_parameter("spline_index_topic", "car_spline_index")
+        self.declare_parameter("drive_topic", "drive")
+        self.declare_parameter("global_goal_topic", "global_goal_pure_pursuit")
+        self.declare_parameter("use_obs_avoid_topic", "use_obs_avoid")
+        
+        traj_csv = self.get_parameter("trajectory_csv").value
+        self.publish_rviz = self.get_parameter("publish_rviz").value
+        self.pp_steer_L_fast = self.get_parameter("pp_steer_L_fast").value
+        self.pp_steer_L_slow = self.get_parameter("pp_steer_L_slow").value
+        self.kp_fast = self.get_parameter("kp_fast").value
+        self.kp_slow = self.get_parameter("kp_slow").value
+        self.L_threshold_speed = self.get_parameter("L_threshold_speed").value
+        odom_topic = self.get_parameter("odom_topic").value
+        pp_current_goal_topic = self.get_parameter("pp_current_goal_topic").value
+        pp_spline_topic = self.get_parameter("pp_spline_topic").value
+        color_points_topic = self.get_parameter("color_points_topic").value
+        spline_index_topic = self.get_parameter("spline_index_topic").value
+        drive_topic = self.get_parameter("drive_topic").value
+        global_goal_topic = self.get_parameter("global_goal_topic").value
+        use_obs_avoid_topic = self.get_parameter("use_obs_avoid_topic").value
 
-        # Define paths
-        pkg_dir = os.path.join(os.getcwd(), 'src','pure_pursuit_pkg', 'pure_pursuit_pkg')
-        #pkg_dir = os.path.join(os.getcwd(), 'src', 'f1tenth_icra2022', 'pure_pursuit_pkg', 'pure_pursuit_pkg')
-        traj_csv = os.path.join(pkg_dir, 'racelines', traj_csv)
+
+
+        # User inputs
+        traj_csv = '/sim_ws/src/f1tenth_gym_ros/racelines/levine.csv'
 
         #### PURE PURSUIT ###
         # Pure pursuit parameters
@@ -46,62 +71,34 @@ class PurePursuit(Node):
         self.kp_slow = 0.5
         self.L_threshold_speed = 4.0 # This is the speed that triggers the slower lookahead
 
-        #Velocity profile parameters
-        self.v_max = 4.5 #3#5 #8 #6
-        self.v_min = 1.5 # This value is NOT used for calculations... only keeps the car above a certain value
-        self.ay_max = 4.0#0.1#3
-        self.ax_max = 6.0#0.1#3
-        self.floor_friction_coeff = 1.0#0.2#1.0 #0.8 #0.4
-        self.k = 3.0 #3 #5  # Curvature Scaling Factor
-        self.offset = 0.0  # Offset to make car brake before turn, and accelerate out of turn units in spline index steps
         self.spline_index_car = 0  # Index of the car on the spline
 
         # Convert waypoints to spline
 
-        if tum_raceline:
-            self.pp_waypoints, self.drive_velocity = load_from_csv(traj_csv, TUM=tum_raceline)
-            self.pp_waypoints = np.flip(self.pp_waypoints, 0)
-            self.pp_x_spline = self.pp_waypoints[:,0]
-            self.pp_y_spline = self.pp_waypoints[:,1]
-        else: 
-            self.pp_waypoints, self.drive_velocity = load_from_csv(traj_csv, TUM=tum_raceline)
+
+
+        self.pp_waypoints, self.drive_velocity = load_from_csv(traj_csv)
         
-        if create_custom_vel_profile:
-            spline_data, m = interpolate.splprep([self.pp_waypoints[:, 0], self.pp_waypoints[:, 1]], s=0, per=True)
-            self.pp_x_spline, self.pp_y_spline = interpolate.splev(np.linspace(0, 1, 1000), spline_data)
-            self.drive_velocity = np.roll(self.calculate_velocity_profile(self.pp_x_spline, self.pp_y_spline), - self.offset)
+        self.pp_x_spline = self.pp_waypoints[:, 0]
+        self.pp_y_spline = self.pp_waypoints[:, 1]
 
         self.pp_spline_points = np.vstack((self.pp_x_spline, self.pp_y_spline, np.zeros((len(self.pp_y_spline)))))
-            
-        with open(os.path.join(pkg_dir, 'racelines', 'temp', 'spline.csv'), 'w', newline='') as csvfile:
-                writer = csv.writer(csvfile, delimiter=',')
-                for i in range(len(self.pp_x_spline)):
-                        writer.writerow([self.pp_x_spline[i], self.pp_y_spline[i]])
-
-        with open(os.path.join(pkg_dir, 'racelines', 'temp', 'velocity.csv'), 'w', newline='') as csvfile:
-                writer = csv.writer(csvfile, delimiter=',')
-                for i in range(len(self.pp_x_spline)):
-                        writer.writerow([self.drive_velocity[i]])
-
 
         #### Obstacle Avoidance ###
         self.use_obs_avoid = False
 
         ### ROS PUB/SUB ###
-        if self.sim_flag:
-            self.pose_subscriber = self.create_subscription(Odometry, 'ego_racecar/odom', self.pose_callback, 1)
-        else:
-            self.pose_subscriber = self.create_subscription(Odometry, 'pf/pose/odom', self.pose_callback, 1)
+        self.pose_subscriber = self.create_subscription(Odometry, odom_topic, self.pose_callback, 1)
 
         if self.publish_rviz:
-            self.current_goal_publisher = self.create_publisher(PointStamped, 'pp_current_goal_rviz',1)
-            self.spline_publisher = self.create_publisher(Marker, 'pp_spline_rviz',1)
-            self.color_points_publisher = self.create_publisher(MarkerArray, 'color_points_rviz', 1)
+            self.current_goal_publisher = self.create_publisher(PointStamped, pp_current_goal_topic,1)
+            self.spline_publisher = self.create_publisher(Marker, pp_spline_topic,1)
+            self.color_points_publisher = self.create_publisher(MarkerArray, color_points_topic, 1)
 
-        self.spline_index_publisher = self.create_publisher(Int16, 'car_spline_index', 1)
-        self.drive_publisher = self.create_publisher(AckermannDriveStamped, 'drive', 1)
-        self.global_goal_publisher = self.create_publisher(Odometry, 'global_goal_pure_pursuit', 1)
-        self.use_obs_avoid_subscriber = self.create_subscription(Bool, 'use_obs_avoid', self.use_obs_avoid_callback, 1)
+        self.spline_index_publisher = self.create_publisher(Int16, spline_index_topic, 1)
+        self.drive_publisher = self.create_publisher(AckermannDriveStamped, drive_topic, 1)
+        self.global_goal_publisher = self.create_publisher(Odometry, global_goal_topic, 1)
+        self.use_obs_avoid_subscriber = self.create_subscription(Bool, use_obs_avoid_topic, self.use_obs_avoid_callback, 1)
         
         self.local_goal = Odometry()
 
@@ -128,10 +125,6 @@ class PurePursuit(Node):
 
         #Determine the speed from the velocity profile
         drive_speed = self.drive_velocity[self.spline_index_car]
-        if drive_speed < self.v_min: # Dont drive too slow
-            drive_speed = self.v_min
-        if self.speed_override is not None:
-            drive_speed = self.speed_override
 
         # Calculate goal point
         if drive_speed > self.L_threshold_speed:
@@ -433,18 +426,12 @@ def load_from_csv(traj_csv, TUM=False, scaler=1):
     # Open csv and read the waypoint data
     points = None
     velocity = None
-    if not TUM:
-        with open(traj_csv, 'r') as f:
-            lines = (line for line in f if not line.startswith('#'))
-            data = np.loadtxt(lines, delimiter=',')
-        points = data[:, 0:4] / scaler
 
-    else:
-        with open(traj_csv, 'r') as f:
-            lines = (line for line in f if not line.startswith('#'))
-            data = np.loadtxt(lines, delimiter=';')
-        points = data[:, 1:3] / scaler
-        velocity = data[:, 5]
+    with open(traj_csv, 'r') as f:
+        lines = (line for line in f if not line.startswith('#'))
+        data = np.loadtxt(lines, delimiter=',')
+    points = data[:, 0:2] 
+    velocity = data[:, 2]
 
 
     return points, velocity

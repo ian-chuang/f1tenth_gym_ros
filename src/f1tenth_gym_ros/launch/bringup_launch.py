@@ -21,12 +21,23 @@ def generate_launch_description():
         'config',
         'obs_detect.yaml'
     )
+    pure_pursuit_config = os.path.join(
+        get_package_share_directory('f1tenth_gym_ros'),
+        'config',
+        'pure_pursuit.yaml'
+    )
+    gap_follow_config = os.path.join(
+        get_package_share_directory('f1tenth_gym_ros'),
+        'config',
+        'gap_follow.yaml'
+    )
 
     # Pure pursuit
     pure_pursuit_node = Node(
         package = 'pure_pursuit_pkg',
         executable = 'pure_pursuit',
-        name = 'pure_pursuit_node'
+        name = 'pure_pursuit',
+        parameters = [pure_pursuit_config]
     )
 
     # Obstacle detection
@@ -41,7 +52,8 @@ def generate_launch_description():
     gap_follow_node = Node(
         package = 'gap_follow',
         executable = 'reactive_node',
-        name = 'obstacle_avoidance_node'
+        name = 'gap_follow',
+        parameters = [gap_follow_config]
     )
 
     ld.add_action(bringup)

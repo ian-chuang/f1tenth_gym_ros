@@ -23,6 +23,32 @@ class ReactiveFollowGap : public rclcpp::Node {
     public:
         ReactiveFollowGap() : Node("reactive_node")
         {
+            this->declare_parameter("drive_topic", "/drive");
+            this->declare_parameter("lidarscan_topic", "/scan");
+            this->declare_parameter("decision_topic", "/use_obs_avoid");
+            this->declare_parameter("index_topic", "/car_spline_index");
+            this->declare_parameter("velocity_file_name", "/sim_ws/src/f1tenth_gym_ros/racelines/levine.csv");
+            this->declare_parameter("window_size", 3);
+            this->declare_parameter("max_range_threshold", 10.0);
+            this->declare_parameter("max_drive_range_threshold", 5.0);
+            this->declare_parameter("car_width", 0.60);
+            this->declare_parameter("angle_cutoff", 1.5);
+            this->declare_parameter("disp_threshold", 0.4);
+            this->declare_parameter("bubble_dist_threshold", 6.0);
+
+            std::string drive_topic = this->get_parameter("drive_topic").as_string();
+            std::string lidarscan_topic = this->get_parameter("lidarscan_topic").as_string();
+            std::string decision_topic = this->get_parameter("decision_topic").as_string();
+            std::string index_topic = this->get_parameter("index_topic").as_string();
+            std::string velocity_file_name = this->get_parameter("velocity_file_name").as_string();
+            window_size = this->get_parameter("window_size").as_int();
+            max_range_threshold = this->get_parameter("max_range_threshold").as_double();
+            max_drive_range_threshold = this->get_parameter("max_drive_range_threshold").as_double();
+            car_width = this->get_parameter("car_width").as_double();
+            angle_cutoff = this->get_parameter("angle_cutoff").as_double();
+            disp_threshold = this->get_parameter("disp_threshold").as_double();
+            bubble_dist_threshold = this->get_parameter("bubble_dist_threshold").as_double();
+
             /// Create ROS subscribers and publishers
             drive_publisher = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>(drive_topic, 1);
             scan_sub = this->create_subscription<sensor_msgs::msg::LaserScan>(lidarscan_topic, 1, std::bind(&ReactiveFollowGap::lidar_callback, this, _1));
@@ -30,24 +56,29 @@ class ReactiveFollowGap : public rclcpp::Node {
             car_index_sub = this->create_subscription<std_msgs::msg::Int16>(index_topic, 1, std::bind(&ReactiveFollowGap::index_callback, this, _1));
 
             //Read in velocity points
-            std::string velocity_file_name = "/sim_ws/src/pure_pursuit_pkg/pure_pursuit_pkg/racelines/temp/velocity.csv";
-            //std::string velocity_file_name = "src/pure_pursuit_pkg/pure_pursuit_pkg/racelines/temp/velocity.csv";
             std::vector<float> row;
             std::string line, number;
             std::fstream file (velocity_file_name, std::ios::in);
             if(file.is_open())
             {
                 std::cout<<"Velocity file open!"<<std::endl;
+                int column = 0;
                 while(getline(file, line))
                 {
                     std::stringstream str(line);
                     while(getline(str, number, ','))
-                        velocity_points.push_back(std::stof(number));
+                    {
+                        column++;
+                        if(column == 3) { // read third column
+                            velocity_points.push_back(std::stof(number));
+                            break; // move to next line
+                        }
+                    }
+                    column = 0; // reset column counter
                 }
             }
             else{ 
-                std::cout<<"ERROR_ERROR_ERROR"<<std::endl;
-                std::cout<<"OBS_DETECT.CPP Failed to open spline csv"<<std::endl;
+                RCLCPP_INFO(this->get_logger(), "Failed to open file: %s", velocity_file_name.c_str());
             }
 
         }
@@ -68,10 +99,7 @@ class ReactiveFollowGap : public rclcpp::Node {
         int car_spline_index = 0;
         
 
-        std::string lidarscan_topic = "/scan";
-        std::string drive_topic = "/drive";
-        std::string decision_topic = "/use_obs_avoid";
-        std::string index_topic = "/car_index";
+
 
         /// Create ROS subscribers and publishers
         rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub;
@@ -150,7 +178,8 @@ class ReactiveFollowGap : public rclcpp::Node {
 
                 }
                 float spline_velocity = velocity_points[car_spline_index]; 
-                drive_msg.drive.speed = drive_speed_calc(ranges_p, angles_p, num_readings_p, spline_velocity, (spline_velocity-2.0)); //Scales the velocity from the pure pursuit velocity to some lower bound, depending on the distance of range readings... maybe steer angle would be better? 
+                // RCLCPP_INFO(this->get_logger(), "car spline index %d", car_spline_index);
+                drive_msg.drive.speed = drive_speed_calc(ranges_p, angles_p, num_readings_p, spline_velocity, std::max(spline_velocity-2.0, 0.0) ); //Scales the velocity from the pure pursuit velocity to some lower bound, depending on the distance of range readings... maybe steer angle would be better? 
                 drive_publisher->publish(drive_msg);
             }
         }
@@ -405,7 +434,7 @@ class ReactiveFollowGap : public rclcpp::Node {
             }
         }
 
-        float drive_speed_calc(std::vector<float>& ranges, std::vector<float>& angles, int num_readings, float max_drive_speed, float min_drive_speed){
+        float drive_speed_calc(std::vector<float>& ranges, std::vector<float>& angles, int num_readings, float max_drive_speed, float min_drive_speed){            
             //Get average range in front facing window
             float drive_speed;
 
@@ -437,6 +466,8 @@ class ReactiveFollowGap : public rclcpp::Node {
             }
             mean = mean / num_window_readings_float;
             drive_speed = min_drive_speed +  (max_drive_speed - min_drive_speed) * mean/max_range_threshold;
+
+            // RCLCPP_INFO(this->get_logger(), "min_drive_speed %f, max_drive_speed %f, drive_speed %f", min_drive_speed, max_drive_speed, drive_speed);
 
             return drive_speed;
         }

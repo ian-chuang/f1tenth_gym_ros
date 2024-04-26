@@ -1,0 +1,14 @@
+gap_follow:
+  ros__parameters:
+    drive_topic: "/drive"
+    lidarscan_topic: "/scan"
+    decision_topic: "/use_obs_avoid"
+    index_topic: "/car_spline_index"
+    velocity_file_name: "/sim_ws/src/f1tenth_gym_ros/racelines/levine.csv"
+    window_size: 3
+    max_range_threshold: 10.0
+    max_drive_range_threshold: 5.0
+    car_width: 0.60
+    angle_cutoff: 1.5
+    disp_threshold: 0.4
+    bubble_dist_threshold: 6.0
