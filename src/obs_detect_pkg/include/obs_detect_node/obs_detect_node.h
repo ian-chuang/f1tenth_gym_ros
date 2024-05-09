@@ -58,7 +58,9 @@ public:
     Eigen::Quaterniond q;
     Eigen::Matrix3d rotation_mat;
     nav_msgs::msg::Odometry current_car_pose;
-    std::vector<std::vector<float>> spline_points;   
+    std::vector<std::vector<float>> spline_points;  
+    
+    bool received_odom_yet = false; 
 
     //Drive command information 
     float current_car_speed; 

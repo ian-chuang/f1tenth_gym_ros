@@ -51,7 +51,9 @@ OBS_DETECT::OBS_DETECT(): rclcpp::Node("obs_detect_node"){
     pose_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(pose_topic, 1, std::bind(&OBS_DETECT::pose_callback, this, std::placeholders::_1));
     
 
-
+	RCLCPP_INFO(rclcpp::get_logger("OBS_DETECT"), "loadidfgsdfg newnewnewng map: %s\n", spline_file_name.c_str());
+	RCLCPP_INFO(rclcpp::get_logger("OBS_DETECT"), "subscribing to odom: %s\n", pose_topic.c_str());
+	RCLCPP_INFO(rclcpp::get_logger("OBS_DETECT"), "subscribing to scan: %s\n", scan_topic.c_str());
 
     //Read in spline points
     std::vector<float> row;
@@ -92,19 +94,29 @@ void OBS_DETECT::scan_callback(const sensor_msgs::msg::LaserScan::ConstSharedPtr
     // Returns:
     //    listed_data: A new occupancy grid
     //    checks if we need to use gap follow
+    
+    RCLCPP_INFO(rclcpp::get_logger("OBS_DETECT"), "SCAN CALLBACK CALLED");
+    
+    if (got_pose_flag) {
 
 
     if(publish_thetas == true){
         find_and_publish_gap(scan_msg);
     }
+    
+    RCLCPP_INFO(rclcpp::get_logger("OBS_DETECT"), "GOING TO FIND POS");
 
 
     //Find the position of the local goal
+    
     global_obs_detect_goal = spline_points[goal_spline_idx];
     Eigen::Vector3d local_point((global_obs_detect_goal[0] - current_car_pose.pose.pose.position.x), (global_obs_detect_goal[1] - current_car_pose.pose.pose.position.y), 0);
     Eigen::Vector3d local_goal = rotation_mat.inverse() * local_point;
     int x_goal = (local_goal[0]/resolution) + center_x;
     int y_goal = (local_goal[1]/resolution) + center_y;
+	    
+    
+    RCLCPP_INFO(rclcpp::get_logger("OBS_DETECT"), "found position of local goal, current car point: %f %f", current_car_pose.pose.pose.position.x, current_car_pose.pose.pose.position.y);
 
     
     std::vector<signed char> occugrid_flat(occu_grid_y_size * occu_grid_x_size);
@@ -135,10 +147,17 @@ void OBS_DETECT::scan_callback(const sensor_msgs::msg::LaserScan::ConstSharedPtr
             }
         }
     }
+    
+    RCLCPP_INFO(rclcpp::get_logger("OBS_DETECT"), "did step two");
+    
     if (publish_rviz == true){
+    	RCLCPP_INFO(rclcpp::get_logger("OBS_DETECT"), "%s\n", "publishing in rviz");
         publish_grid(occugrid_flat);
     }
     check_to_activate_obs_avoid(occugrid_flat);
+    }
+    
+    
 }
 
 void OBS_DETECT::check_to_activate_obs_avoid(std::vector<signed char> &occugrid_flat){
