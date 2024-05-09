@@ -12,3 +12,5 @@ gap_follow:
     angle_cutoff: 1.5
     disp_threshold: 0.4
     bubble_dist_threshold: 6.0
+    velocity_scaling_factor: 0.75
+    minimum_speed: 0.5

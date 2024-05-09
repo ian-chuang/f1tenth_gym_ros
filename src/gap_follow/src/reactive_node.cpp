@@ -29,12 +29,14 @@ class ReactiveFollowGap : public rclcpp::Node {
             this->declare_parameter("index_topic", "/car_spline_index");
             this->declare_parameter("velocity_file_name", "/sim_ws/src/f1tenth_gym_ros/racelines/levine.csv");
             this->declare_parameter("window_size", 3);
-            this->declare_parameter("max_range_threshold", 10.0);
+            this->declare_parameter("max_range_threshold", 7.0);
             this->declare_parameter("max_drive_range_threshold", 5.0);
             this->declare_parameter("car_width", 0.60);
             this->declare_parameter("angle_cutoff", 1.5);
             this->declare_parameter("disp_threshold", 0.4);
             this->declare_parameter("bubble_dist_threshold", 6.0);
+            this->declare_parameter("velocity_scaling_factor", 5.0);
+            this->declare_parameter("minimum_speed", 0.5);
 
             std::string drive_topic = this->get_parameter("drive_topic").as_string();
             std::string lidarscan_topic = this->get_parameter("lidarscan_topic").as_string();
@@ -48,6 +50,8 @@ class ReactiveFollowGap : public rclcpp::Node {
             angle_cutoff = this->get_parameter("angle_cutoff").as_double();
             disp_threshold = this->get_parameter("disp_threshold").as_double();
             bubble_dist_threshold = this->get_parameter("bubble_dist_threshold").as_double();
+            velocity_scaling_factor = this->get_parameter("velocity_scaling_factor").as_double();
+            minimum_speed = this->get_parameter("minimum_speed").as_double();
 
             /// Create ROS subscribers and publishers
             drive_publisher = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>(drive_topic, 1);
@@ -89,8 +93,9 @@ class ReactiveFollowGap : public rclcpp::Node {
         int window_size = 3; //This is the size of the "window" for the window mean
         float max_range_threshold = 10.0; //Anything beyond this value is set to this value
         float max_drive_range_threshold = 5.0;
-
+        float velocity_scaling_factor = 5.0;
         float car_width = .60; //Meters
+        float minimum_speed = 0.5;
 
         float angle_cutoff = 1.5; //radians
         float disp_threshold = .4;//meter
@@ -179,7 +184,7 @@ class ReactiveFollowGap : public rclcpp::Node {
                 }
                 float spline_velocity = velocity_points[car_spline_index]; 
                 // RCLCPP_INFO(this->get_logger(), "car spline index %d", car_spline_index);
-                drive_msg.drive.speed = drive_speed_calc(ranges_p, angles_p, num_readings_p, spline_velocity, std::max(spline_velocity-2.0, 0.0) ); //Scales the velocity from the pure pursuit velocity to some lower bound, depending on the distance of range readings... maybe steer angle would be better? 
+                drive_msg.drive.speed = drive_speed_calc(ranges_p, angles_p, num_readings_p, spline_velocity); //Scales the velocity from the pure pursuit velocity to some lower bound, depending on the distance of range readings... maybe steer angle would be better? 
                 drive_publisher->publish(drive_msg);
             }
         }
@@ -434,7 +439,7 @@ class ReactiveFollowGap : public rclcpp::Node {
             }
         }
 
-        float drive_speed_calc(std::vector<float>& ranges, std::vector<float>& angles, int num_readings, float max_drive_speed, float min_drive_speed){            
+        float drive_speed_calc(std::vector<float>& ranges, std::vector<float>& angles, int num_readings, double max_drive_speed){                        
             //Get average range in front facing window
             float drive_speed;
 
@@ -465,7 +470,16 @@ class ReactiveFollowGap : public rclcpp::Node {
                 mean += ranges[i];
             }
             mean = mean / num_window_readings_float;
-            drive_speed = min_drive_speed +  (max_drive_speed - min_drive_speed) * mean/max_range_threshold;
+            // drive_speed = min_drive_speed +  (max_drive_speed - min_drive_speed) * mean/max_range_threshold;
+
+            drive_speed = max_drive_speed * (1 - (1 / (1 + mean/velocity_scaling_factor)));
+
+            if (drive_speed < minimum_speed){
+                drive_speed = minimum_speed;
+                RCLCPP_INFO(this->get_logger(), "Drive speed below minimum, setting to minimum of %f", minimum_speed);
+            }
+
+            RCLCPP_INFO(this->get_logger(), "max_drive_speed %f, drive_speed %f, drive_factor %f", max_drive_speed, drive_speed, (1 - (1 / (1 + mean/velocity_scaling_factor))));
 
             // RCLCPP_INFO(this->get_logger(), "min_drive_speed %f, max_drive_speed %f, drive_speed %f", min_drive_speed, max_drive_speed, drive_speed);
 
