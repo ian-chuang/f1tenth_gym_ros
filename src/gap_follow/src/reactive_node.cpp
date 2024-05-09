@@ -23,11 +23,6 @@ class ReactiveFollowGap : public rclcpp::Node {
     public:
         ReactiveFollowGap() : Node("reactive_node")
         {
-        
-        	drive_msg = ackermann_msgs::msg::AckermannDriveStamped();
-        	drive_msg.drive.steering_angle = 0;
-        	
-        
             this->declare_parameter("drive_topic", "/drive");
             this->declare_parameter("lidarscan_topic", "/scan");
             this->declare_parameter("decision_topic", "/use_obs_avoid");
@@ -103,8 +98,6 @@ class ReactiveFollowGap : public rclcpp::Node {
         std::vector<float> velocity_points; 
         int car_spline_index = 0;
         
-        ackermann_msgs::msg::AckermannDriveStamped drive_msg;
-        
 
 
 
@@ -176,8 +169,9 @@ class ReactiveFollowGap : public rclcpp::Node {
                 going_to_hit = corner_safety_check(ranges_raw, angles_raw, drive_angle, num_readings, angle_increment);
 
                 // Publish Drive message
+                auto drive_msg = ackermann_msgs::msg::AckermannDriveStamped();
                 if (going_to_hit==false){
-                    drive_msg.drive.steering_angle =  drive_angle;
+                    drive_msg.drive.steering_angle = drive_angle;
                 }
                 else{
                     drive_msg.drive.steering_angle = 0;
@@ -187,9 +181,6 @@ class ReactiveFollowGap : public rclcpp::Node {
                 // RCLCPP_INFO(this->get_logger(), "car spline index %d", car_spline_index);
                 drive_msg.drive.speed = drive_speed_calc(ranges_p, angles_p, num_readings_p, spline_velocity, std::max(spline_velocity-2.0, 0.0) ); //Scales the velocity from the pure pursuit velocity to some lower bound, depending on the distance of range readings... maybe steer angle would be better? 
                 drive_publisher->publish(drive_msg);
-            }
-            else {
-            	drive_msg.drive.steering_angle = 0.0;
             }
         }
 
