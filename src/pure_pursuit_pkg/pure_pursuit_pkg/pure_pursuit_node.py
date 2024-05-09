@@ -26,14 +26,14 @@ class PurePursuit(Node):
         super().__init__('pure_pursuit_node')
 
         # declare parameters
-        self.declare_parameter("trajectory_csv", "/sim_ws/src/f1tenth_gym_ros/racelines/levine.csv")
+        self.declare_parameter("trajectory_csv", "/home/car1/f1tenth_ws/src/darc_f1tenth_system/f1tenth_stack/racelines/struggle_screen_recording.csv")
         self.declare_parameter("publish_rviz", True)
         self.declare_parameter("pp_steer_L_fast", 2.5)
         self.declare_parameter("pp_steer_L_slow", 1.25)
         self.declare_parameter("kp_fast", 0.35)
         self.declare_parameter("kp_slow", 0.5)
         self.declare_parameter("L_threshold_speed", 4.0)
-        self.declare_parameter("odom_topic", "ego_racecar/odom")
+        self.declare_parameter("odom_topic", "/pf/pose/odom")
         self.declare_parameter("pp_current_goal_topic", "pp_current_goal_rviz")
         self.declare_parameter("pp_spline_topic", "pp_spline_rviz")
         self.declare_parameter("color_points_topic", "color_points_rviz")
@@ -58,10 +58,6 @@ class PurePursuit(Node):
         global_goal_topic = self.get_parameter("global_goal_topic").value
         use_obs_avoid_topic = self.get_parameter("use_obs_avoid_topic").value
 
-
-
-        # User inputs
-        traj_csv = '/sim_ws/src/f1tenth_gym_ros/racelines/levine.csv'
 
         #### PURE PURSUIT ###
         # Pure pursuit parameters

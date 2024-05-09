@@ -20,14 +20,14 @@ OBS_DETECT::~OBS_DETECT() {
 // Constructor of the OBS_DETECT class
 OBS_DETECT::OBS_DETECT(): rclcpp::Node("obs_detect_node"){
     // initialise parameters
-    this->declare_parameter("spline_file_name", "spline_points.csv");
+    this->declare_parameter("spline_file_name", "/home/car1/f1tenth_ws/src/darc_f1tenth_system/f1tenth_stack/racelines/struggle_screen_recording.csv");
     this->declare_parameter("coll_grid_topic", "/coll_grid_pub_rviz");
     this->declare_parameter("coll_path_topic", "/coll_path_pub_rviz");
     this->declare_parameter("use_avoid_topic", "/use_obs_avoid");
     this->declare_parameter("gap_theta_topic", "/gap_thetas");
     this->declare_parameter("scan_topic", "/scan");
     this->declare_parameter("drive_topic", "/drive");
-    this->declare_parameter("pose_topic", "ego_racecar/odom");
+    this->declare_parameter("pose_topic", "/pf/pose/odom");
 
     std::string spline_file_name = this->get_parameter("spline_file_name").as_string();
     std::string coll_grid_topic = this->get_parameter("coll_grid_topic").as_string();
@@ -70,7 +70,7 @@ OBS_DETECT::OBS_DETECT(): rclcpp::Node("obs_detect_node"){
 	}
     else{ 
         std::cout<<"ERROR_ERROR_ERROR"<<std::endl;
-        std::cout<<"OBS_DETECT.CPP Failed to open spline csv"<<std::endl;
+        std::cout<<"OBS_DETECT.CPP Failed to open spline csv" << spline_file_name<<std::endl;
     }
 
     //Initialzie pose
