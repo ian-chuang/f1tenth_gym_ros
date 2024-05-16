@@ -18,3 +18,9 @@ ros2 param get /turtlesim background_g
 # ctrl-C all running terminals
 
 ros2 launch turtlesim multisim.launch.py
+
+# ctrl-C all running terminals
+
+# show publisher and subscriber code
+ros2 run examples_rclpy_minimal_publisher publisher_member_function
+ros2 run examples_rclpy_minimal_subscriber subscriber_member_function
