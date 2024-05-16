@@ -1,0 +1,12 @@
+sudo apt update
+
+sudo apt install ros-foxy-turtlesim
+
+ros2 run turtlesim turtlesim_node
+
+ros2 run turtlesim turtle_teleop_key
+
+ros2 topic list
+
+ros2 topic echo /turtle1/cmd_vel
+
