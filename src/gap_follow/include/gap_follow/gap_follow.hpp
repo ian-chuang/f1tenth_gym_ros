@@ -15,9 +15,9 @@
 class ReactiveFollowGap : public rclcpp::Node {
 public:
     ReactiveFollowGap();
-    bool use_gap = false;
-
 private:
+
+    // gap params
     int window_size = 3; 
     float max_range_threshold = 10.0; 
     float max_drive_range_threshold = 5.0;
@@ -28,13 +28,16 @@ private:
     float disp_threshold = .4;
     float bubble_dist_threshold = 6; 
     std::vector<float> velocity_points; 
-    float pure_pursuit_velocity = 0;
+    float pure_pursuit_velocity = 0; 
+    bool use_gap = false;
 
+    // pub/sub
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr gap_sub;
     rclcpp::Publisher<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr drive_publisher;
     rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr velocity_sub;
 
+    // methods
     void lidar_callback(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan_msg);
     void preprocess_lidar(std::vector<float>& ranges, int num_readings);
     int find_disparities(std::vector<int>& disp_idx, std::vector<float>& ranges, int num_readings);

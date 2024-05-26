@@ -1,4 +1,5 @@
 /*
+Built off of https://github.com/CL2-UWaterloo/f1tenth_ws/tree/main/src/pure_pursuit
 Pure Pursuit Implementation in C++. Includes features such as dynamic lookahead. Does not have waypoint
 interpolation yet.
 */
@@ -50,11 +51,13 @@ class PurePursuit : public rclcpp::Node {
         Eigen::Vector3d current_point_world;    // Locks on to the closest waypoint, which gives a velocity profile
     };
 
+    // buffer
     Eigen::Matrix3d rotation_m;
-
     double x_car_world;
     double y_car_world;
+    bool use_obs_avoid = false;
 
+    // params
     std::string odom_topic;
     std::string car_refFrame;
     std::string drive_topic;
@@ -71,10 +74,6 @@ class PurePursuit : public rclcpp::Node {
     double steering_limit;
     double velocity_percentage;
     double curr_velocity = 0.0;
-
-    bool emergency_breaking = false;
-    bool use_obs_avoid = false;
-    std::string lane_number = "left";  // left or right lane
 
     // file object
     std::fstream csvFile_waypoints;

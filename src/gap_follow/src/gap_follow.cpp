@@ -6,6 +6,7 @@
 using std::placeholders::_1;
 
 ReactiveFollowGap::ReactiveFollowGap() : Node("reactive_node") {
+    // Declare parameters
     this->declare_parameter("drive_topic", "/drive");
     this->declare_parameter("lidarscan_topic", "/scan");
     this->declare_parameter("decision_topic", "/use_obs_avoid");
@@ -21,6 +22,7 @@ ReactiveFollowGap::ReactiveFollowGap() : Node("reactive_node") {
     this->declare_parameter("velocity_scaling_factor", 5.0);
     this->declare_parameter("minimum_speed", 0.5);
 
+    // read parameters
     std::string drive_topic = this->get_parameter("drive_topic").as_string();
     std::string lidarscan_topic = this->get_parameter("lidarscan_topic").as_string();
     std::string decision_topic = this->get_parameter("decision_topic").as_string();
@@ -48,7 +50,6 @@ ReactiveFollowGap::ReactiveFollowGap() : Node("reactive_node") {
     std::fstream file (velocity_file_name, std::ios::in);
     if(file.is_open())
     {
-        std::cout<<"Velocity file open!"<<std::endl;
         int column = 0;
         while(getline(file, line))
         {
@@ -71,7 +72,6 @@ ReactiveFollowGap::ReactiveFollowGap() : Node("reactive_node") {
 
 void ReactiveFollowGap::lidar_callback(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan_msg) {
     if (use_gap==true){
-        std::cout<<"USING GAP FOLLOW"<<std::endl;
         //Load in range information from message
         int num_readings = scan_msg->ranges.size();
         float ranges_raw[1081];
@@ -81,7 +81,6 @@ void ReactiveFollowGap::lidar_callback(const sensor_msgs::msg::LaserScan::ConstS
         std::vector<float> angles_raw;
         float cur_angle;
         float angle_increment = scan_msg->angle_increment;
-
         for(int i = 0; i < num_readings; i++){
             cur_angle = (scan_msg->angle_increment * i) + (scan_msg->angle_min);
             angles_raw.push_back(cur_angle);
@@ -110,8 +109,10 @@ void ReactiveFollowGap::lidar_callback(const sensor_msgs::msg::LaserScan::ConstS
         std::vector<float> ranges_p(&ranges_raw[cutoff_start_idx], &ranges_raw[cutoff_end_idx]);
         std::vector<float> angles_p(&angles_raw[cutoff_start_idx], &angles_raw[cutoff_end_idx]);
 
+        // Preprocess the lidar data
         preprocess_lidar(ranges_p, num_readings_p); //updates ranges_p
 
+        // find gap
         int num_disp;
         std::vector<int> disp_idx;
         num_disp = find_disparities(disp_idx, ranges_p, num_readings_p);
@@ -120,10 +121,12 @@ void ReactiveFollowGap::lidar_callback(const sensor_msgs::msg::LaserScan::ConstS
         set_close_bubble(ranges_p, angles_p, num_readings_p, angle_increment);
         int *gap_idxes = find_max_gap(ranges_p, num_readings_p); //find the drive idx from the max gap
 
+        // Find the drive angle
         float drive_angle;
         int drive_idx {0};
         drive_angle = find_drive_angle(ranges_p, angles_p, gap_idxes, drive_idx);
 
+        // Check if the car is going to hit a wall
         bool going_to_hit=false;
         going_to_hit = corner_safety_check(ranges_raw, angles_raw, drive_angle, num_readings, angle_increment);
 
@@ -136,25 +139,29 @@ void ReactiveFollowGap::lidar_callback(const sensor_msgs::msg::LaserScan::ConstS
             drive_msg.drive.steering_angle = 0;
 
         }
-        // RCLCPP_INFO(this->get_logger(), "car spline index %d", car_spline_index);
-        drive_msg.drive.speed = drive_speed_calc(ranges_p, angles_p, num_readings_p, pure_pursuit_velocity); //Scales the velocity from the pure pursuit velocity to some lower bound, depending on the distance of range readings... maybe steer angle would be better? 
+        // scale the drive vel based on the range in front of the car
+        drive_msg.drive.speed = drive_speed_calc(ranges_p, angles_p, num_readings_p, pure_pursuit_velocity); 
+        // publish the drive message
         drive_publisher->publish(drive_msg);
     }
 }
 
 void ReactiveFollowGap::gap_callback(const std_msgs::msg::Bool::ConstSharedPtr gap_bool) {
+    // var to use gap follow or not
     use_gap = gap_bool->data;
 }
 
 void ReactiveFollowGap::velocity_callback(const std_msgs::msg::Float64::ConstSharedPtr val) {
+    // get pure pursuit velocity
     pure_pursuit_velocity = val->data;
 }
 
 void ReactiveFollowGap::preprocess_lidar(std::vector<float>& ranges, int num_readings) {
+    // update the ranges vector
     std::vector<float> old_ranges;
     old_ranges = ranges;
 
-    // 1.Setting each value to the mean over some window
+    // Setting each value to the mean over some window
     float running_mean = 0.0;
     ranges[0] = old_ranges[0];
     for(int i = 1; i < (num_readings - 1); i++){
@@ -169,7 +176,7 @@ void ReactiveFollowGap::preprocess_lidar(std::vector<float>& ranges, int num_rea
     }
     ranges[num_readings -1] = old_ranges[num_readings - 1];
 
-    //2.Rejecting high values
+    // Rejecting high values
     for(int i = 0; i < num_readings; i++) {
         if (ranges[i] > max_range_threshold) {
             ranges[i] = max_range_threshold;
@@ -178,10 +185,10 @@ void ReactiveFollowGap::preprocess_lidar(std::vector<float>& ranges, int num_rea
 }
 
 int ReactiveFollowGap::find_disparities(std::vector<int>& disp_idx, std::vector<float>& ranges, int num_readings) {
+    // Find the disparities in the ranges
     int disp_count = 0;
     for(int i = 1; i < num_readings; i++){
         if (abs(ranges[i] - ranges[i-1]) > disp_threshold){
-            //RCLCPP_INFO(this->get_logger(), "Disparity IDX [%d], Range 1: %f  Range 2:%f", i, ranges[i], ranges[i-1]);
             //there is a disparity
             if (ranges[i] < ranges[i -1]){
                 disp_idx.push_back(i);
@@ -211,10 +218,8 @@ void ReactiveFollowGap::set_disparity(std::vector<float>& ranges, int num_points
         }
 
         theta = atan2((car_width /2.0), bubble_dist);
-        n_float = theta/angle_increment; //Is 270 radians!!!!
+        n_float = theta/angle_increment;
         n = static_cast<int>(n_float);
-        //RCLCPP_INFO(this->get_logger(), "Bubble idx [%d], N value [%d], Theta [%f],  Bubble range [%f]", bubble_idx, n, theta, ranges_clean[bubble_idx]);
-
 
         //Cases to fix out of bounds errors
         if (bubble_idx + n > num_points){
@@ -236,12 +241,6 @@ void ReactiveFollowGap::set_disparity(std::vector<float>& ranges, int num_points
                 ranges[bubble_idx - j] = bubble_dist;
             }
         }
-
-        /*Debugging
-        for (int i = 0; i < 5; i++){
-            RCLCPP_INFO(this->get_logger(), "IDX[%d], Range [%f]", bubble_idx + i, ranges[bubble_idx + i]);
-        }
-        */
     }
 }
 
@@ -265,12 +264,9 @@ void ReactiveFollowGap::set_close_bubble(std::vector<float>& ranges, std::vector
 
     //Use trig to find number of points to eliminate
     theta = atan2((car_width /2.0), ranges[bubble_idx]);
-    n_float = theta/angle_increment; //Is 270 radians!!!!
+    n_float = theta/angle_increment; 
     n = static_cast<int>(n_float);
-    //RCLCPP_INFO(this->get_logger(), "Bubble CLOSE- idx [%d], angle[%f], N value [%f], range [%f]", bubble_idx, angles[bubble_idx], n_float, ranges[bubble_idx]);
 
-
-    //Cases to fix out of bounds errors
     //Cases to fix out of bounds errors
     int n_up = n;
     int n_down = n;
@@ -427,18 +423,15 @@ float ReactiveFollowGap::drive_speed_calc(std::vector<float>& ranges, std::vecto
         mean += ranges[i];
     }
     mean = mean / num_window_readings_float;
-    // drive_speed = min_drive_speed +  (max_drive_speed - min_drive_speed) * mean/max_range_threshold;
 
     drive_speed = max_drive_speed * (1 - (1 / (1 + mean/velocity_scaling_factor)));
 
+    // set a minimum speed
     if (drive_speed < minimum_speed){
         drive_speed = minimum_speed;
-        RCLCPP_INFO(this->get_logger(), "Drive speed below minimum, setting to minimum of %f", minimum_speed);
+        RCLCPP_DEBUG(this->get_logger(), "Drive speed below minimum, setting to minimum of %f", minimum_speed);
     }
-
-    RCLCPP_INFO(this->get_logger(), "max_drive_speed %f, drive_speed %f, drive_factor %f", max_drive_speed, drive_speed, (1 - (1 / (1 + mean/velocity_scaling_factor))));
-
-    // RCLCPP_INFO(this->get_logger(), "min_drive_speed %f, max_drive_speed %f, drive_speed %f", min_drive_speed, max_drive_speed, drive_speed);
+    RCLCPP_DEBUG(this->get_logger(), "max_drive_speed %f, drive_speed %f, drive_factor %f", max_drive_speed, drive_speed, (1 - (1 / (1 + mean/velocity_scaling_factor))));
 
     return drive_speed;
 }
@@ -448,14 +441,12 @@ bool ReactiveFollowGap::corner_safety_check(float p_ranges[1080], std::vector<fl
 
     float safety_range_threshold = .5;
     float drive_activation_angle = .20632; //Set to 25 deg right now
-    //float drive_activation_angle = .43632; //Set to 25 deg right now
     float window_size = 0.174533; //10 degrees
     float window_start = 1.5708;
 
     float num_window_readings = window_size / angle_increment;
 
     float window_mean = 0.0;
-
 
     if (abs(drive_angle) > drive_activation_angle && drive_angle < 0){
         //right turn

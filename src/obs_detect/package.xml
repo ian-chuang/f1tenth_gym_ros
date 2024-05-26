@@ -4,7 +4,7 @@
   <name>obs_detect</name>
   <version>0.0.0</version>
   <description>Obstacle avoidance node for F1tenth race</description>
-  <maintainer email="ldavisiv@seas.upenn.edu"> Lenny Davis</maintainer>
+  <maintainer email="fake@gmail.com">Fake Name</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

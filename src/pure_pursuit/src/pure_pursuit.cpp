@@ -1,9 +1,9 @@
-#include "pure_pursuit/pure_pursuit.hpp"
+// built off of https://github.com/CL2-UWaterloo/f1tenth_ws/tree/main/src/pure_pursuit
 
+#include "pure_pursuit/pure_pursuit.hpp"
 #include <math.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
-
 #include <Eigen/Eigen>
 #include <algorithm>
 #include <chrono>
@@ -15,7 +15,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -24,7 +23,7 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 
 PurePursuit::PurePursuit() : Node("pure_pursuit_node") {
-    // initialise parameters
+    // init params
     this->declare_parameter("waypoints_path", "/sim_ws/src/pure_pursuit/racelines/e7_floor5.csv");
     this->declare_parameter("odom_topic", "/ego_racecar/odom");
     this->declare_parameter("car_refFrame", "ego_racecar/base_link");
@@ -41,7 +40,7 @@ PurePursuit::PurePursuit() : Node("pure_pursuit_node") {
     this->declare_parameter("velocity_topic", "pure_pursuit_velocity");
     this->declare_parameter("use_obs_avoid_topic", "use_obs_avoid");
 
-    // Default Values
+    // get vals
     waypoints_path = this->get_parameter("waypoints_path").as_string();
     odom_topic = this->get_parameter("odom_topic").as_string();
     car_refFrame = this->get_parameter("car_refFrame").as_string();
@@ -58,21 +57,27 @@ PurePursuit::PurePursuit() : Node("pure_pursuit_node") {
     velocity_topic = this->get_parameter("velocity_topic").as_string();
     use_obs_avoid_topic = this->get_parameter("use_obs_avoid_topic").as_string();
 
+    // create subscribers
     subscription_odom = this->create_subscription<nav_msgs::msg::Odometry>(odom_topic, 25, std::bind(&PurePursuit::odom_callback, this, _1));
     subscription_obs_avoid = this->create_subscription<std_msgs::msg::Bool>(use_obs_avoid_topic, 25, std::bind(&PurePursuit::use_obs_avoid_callback, this, _1));
-    timer_ = this->create_wall_timer(2000ms, std::bind(&PurePursuit::timer_callback, this));
-
+    
+    // create publishers
     publisher_drive = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>(drive_topic, 25);
     publisher_velocity = this->create_publisher<std_msgs::msg::Float64>(velocity_topic, 25);
     vis_current_point_pub = this->create_publisher<visualization_msgs::msg::Marker>(rviz_current_waypoint_topic, 10);
     vis_lookahead_point_pub = this->create_publisher<visualization_msgs::msg::Marker>(rviz_lookahead_waypoint_topic, 10);
 
+    // tf listener
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
-    RCLCPP_INFO(this->get_logger(), "Pure pursuit node has been launched");
-
+    // load waypoint csv
     load_waypoints();
+
+    // create timer for updating params on runtime
+    timer_ = this->create_wall_timer(2000ms, std::bind(&PurePursuit::timer_callback, this));
+
+    RCLCPP_INFO(this->get_logger(), "Pure pursuit node has been launched.");
 }
 
 double PurePursuit::to_radians(double degrees) {
@@ -91,8 +96,10 @@ double PurePursuit::p2pdist(double &x1, double &x2, double &y1, double &y2) {
 }
 
 void PurePursuit::load_waypoints() {
+    // open waypoint csv
     csvFile_waypoints.open(waypoints_path, std::ios::in);
 
+    // check if open
     if (!csvFile_waypoints.is_open()) {
         RCLCPP_ERROR(this->get_logger(), "Cannot Open CSV File: %s", waypoints_path);
         return;
@@ -100,9 +107,8 @@ void PurePursuit::load_waypoints() {
         RCLCPP_INFO(this->get_logger(), "CSV File Opened");
     }
 
-    // std::vector<std::string> row;
+    // parse waypoints
     std::string line, word, temp;
-
     while (!csvFile_waypoints.eof()) {
         std::getline(csvFile_waypoints, line, '\n');
         std::stringstream s(line);
@@ -110,6 +116,7 @@ void PurePursuit::load_waypoints() {
         int j = 0;
         while (getline(s, word, ',')) {
             if (!word.empty()) {
+                // get x,y and vel
                 if (j == 0) {
                     waypoints.X.push_back(std::stod(word));
                 } else if (j == 1) {
@@ -123,18 +130,20 @@ void PurePursuit::load_waypoints() {
     }
 
     csvFile_waypoints.close();
-    num_waypoints = waypoints.X.size();
-    RCLCPP_INFO(this->get_logger(), "Finished loading %d waypoints from %s", num_waypoints, waypoints_path);
 
+    // calc avg dist between waypoints
     double average_dist_between_waypoints = 0.0;
+    num_waypoints = waypoints.X.size();
     for (int i = 0; i < num_waypoints - 1; i++) {
         average_dist_between_waypoints += p2pdist(waypoints.X[i], waypoints.X[i + 1], waypoints.Y[i], waypoints.Y[i + 1]);
     }
     average_dist_between_waypoints /= num_waypoints;
+    RCLCPP_INFO(this->get_logger(), "Finished loading %d waypoints from %s", num_waypoints, waypoints_path);
     RCLCPP_INFO(this->get_logger(), "Average distance between waypoints: %f", average_dist_between_waypoints);
 }
 
 void PurePursuit::visualize_lookahead_point(Eigen::Vector3d &point) {
+    // create marker 
     auto marker = visualization_msgs::msg::Marker();
     marker.header.frame_id = "map";
     marker.header.stamp = rclcpp::Clock().now();
@@ -145,14 +154,15 @@ void PurePursuit::visualize_lookahead_point(Eigen::Vector3d &point) {
     marker.scale.z = 0.25;
     marker.color.a = 1.0;
     marker.color.r = 1.0;
-
     marker.pose.position.x = point(0);
     marker.pose.position.y = point(1);
     marker.id = 1;
+    // publish
     vis_lookahead_point_pub->publish(marker);
 }
 
 void PurePursuit::visualize_current_point(Eigen::Vector3d &point) {
+    // create marker
     auto marker = visualization_msgs::msg::Marker();
     marker.header.frame_id = "map";
     marker.header.stamp = rclcpp::Clock().now();
@@ -163,10 +173,10 @@ void PurePursuit::visualize_current_point(Eigen::Vector3d &point) {
     marker.scale.z = 0.25;
     marker.color.a = 1.0;
     marker.color.b = 1.0;
-
     marker.pose.position.x = point(0);
     marker.pose.position.y = point(1);
     marker.id = 1;
+    // publish
     vis_current_point_pub->publish(marker);
 }
 
@@ -228,6 +238,7 @@ void PurePursuit::get_waypoint() {
 }
 
 void PurePursuit::quat_to_rot(double q0, double q1, double q2, double q3) {
+    // convert quaternion to rotation
     double r00 = (double)(2.0 * (q0 * q0 + q1 * q1) - 1.0);
     double r01 = (double)(2.0 * (q1 * q2 - q0 * q3));
     double r02 = (double)(2.0 * (q1 * q3 + q0 * q2));
@@ -248,6 +259,7 @@ void PurePursuit::transformandinterp_waypoint() {  // pass old waypoint here
     waypoints.lookahead_point_world << waypoints.X[waypoints.index], waypoints.Y[waypoints.index], 0.0;
     waypoints.current_point_world << waypoints.X[waypoints.velocity_index], waypoints.Y[waypoints.velocity_index], 0.0;
 
+    // visualize waypoints
     visualize_lookahead_point(waypoints.lookahead_point_world);
     visualize_current_point(waypoints.current_point_world);
 
@@ -264,7 +276,6 @@ void PurePursuit::transformandinterp_waypoint() {  // pass old waypoint here
     // transform points (rotate first and then translate)
     Eigen::Vector3d translation_v(transformStamped.transform.translation.x, transformStamped.transform.translation.y, transformStamped.transform.translation.z);
     quat_to_rot(transformStamped.transform.rotation.w, transformStamped.transform.rotation.x, transformStamped.transform.rotation.y, transformStamped.transform.rotation.z);
-
     waypoints.lookahead_point_car = (rotation_m * waypoints.lookahead_point_world) + translation_v;
 }
 
@@ -299,37 +310,36 @@ double PurePursuit::get_velocity(double steering_angle) {
 }
 
 void PurePursuit::publish_message(double steering_angle) {
+    // only drive if no obstacle in the way
     if (!use_obs_avoid) {
+        // create ackerman cmd
         auto drive_msgObj = ackermann_msgs::msg::AckermannDriveStamped();
+        // set steering
         if (steering_angle < 0.0) {
             drive_msgObj.drive.steering_angle = std::max(steering_angle, -to_radians(steering_limit));  // ensure steering angle is dynamically capable
         } else {
             drive_msgObj.drive.steering_angle = std::min(steering_angle, to_radians(steering_limit));  // ensure steering angle is dynamically capable
         }
-
+        // set vel
         curr_velocity = get_velocity(drive_msgObj.drive.steering_angle);
         drive_msgObj.drive.speed = curr_velocity;
+        // publish cmd
+        publisher_drive->publish(drive_msgObj);
 
         RCLCPP_INFO(this->get_logger(), "index: %d ... distance: %.2fm ... Speed: %.2fm/s ... Steering Angle: %.2f ... K_p: %.2f ... velocity_percentage: %.2f", waypoints.index, p2pdist(waypoints.X[waypoints.index], x_car_world, waypoints.Y[waypoints.index], y_car_world), drive_msgObj.drive.speed, to_degrees(drive_msgObj.drive.steering_angle), K_p, velocity_percentage);
-
-        publisher_drive->publish(drive_msgObj);
     }
 }
 
 void PurePursuit::odom_callback(const nav_msgs::msg::Odometry::ConstSharedPtr odom_submsgObj) {
+    // set car pos
     x_car_world = odom_submsgObj->pose.pose.position.x;
     y_car_world = odom_submsgObj->pose.pose.position.y;
     // interpolate between different way-points
     get_waypoint();
-
     // use tf2 transform the goal point
     transformandinterp_waypoint();
-
     // Calculate curvature/steering angle
     double steering_angle = p_controller();
-
-    // publish 
-
     // publish object and message: AckermannDriveStamped on drive topic
     publish_message(steering_angle);
 }
@@ -345,5 +355,6 @@ void PurePursuit::timer_callback() {
 }
 
 void PurePursuit::use_obs_avoid_callback(const std_msgs::msg::Bool::ConstSharedPtr use_obs_avoid_submsgObj) {
+    // set obs avoid
     use_obs_avoid = use_obs_avoid_submsgObj->data;
 }

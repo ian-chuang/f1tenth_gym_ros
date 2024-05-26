@@ -1,6 +1,4 @@
-// RRT assignment
-// This file contains the class definition of tree nodes and RRT
-// Before you start, please read: https://arxiv.org/pdf/1105.1186.pdf
+// built off of https://github.com/ladavis4/F1Tenth_Final_Project_and_ICRA2022/tree/main/obs_detect_pkg
 
 #include <iostream>
 #include <fstream>
@@ -37,7 +35,6 @@ public:
     ///////////USER INPUT////////////
     //Flags
     bool publish_rviz = true;
-    bool publish_thetas = false;
 
     //Settings
     int collision_loop_threshold = 15; //How many clear path loops need to run before pure pursuit turns off
@@ -73,13 +70,6 @@ public:
     bool got_pose_flag = false;
     int collision_detect_counter = 0;
 
-    //Gap stuff
-    float max_range_threshold = 10.0;
-    float bubble_dist_threshold = 6; //meteres
-    float disp_threshold = .4;//meter
-    float car_width = .60; //Meter
-    float angle_cutoff = 1.5; //radians
-
 
 
 private:
@@ -112,15 +102,6 @@ private:
     //Publisher functions
     void publish_grid(std::vector<signed char> &occugrid_flat);
     void publish_path(std::vector<signed char> &occugrid_flat); 
-
-    //Gap identifier functions
-    void preprocess_lidar(std::vector<float>& ranges, int num_readings);
-    int* find_max_gap(std::vector<float>& ranges, int num_readings);
-    int find_disparities(std::vector<int>& disp_idx, std::vector<float>& ranges, int num_readings);
-    void set_disparity(std::vector<float>& ranges, int num_points, std::vector<int>& disp_idx, int num_disp, float angle_increment, std::vector<float>& ranges_clean);
-    void set_close_bubble(std::vector<float>& ranges, std::vector<float>& angles, int num_points, float angle_increment);
-    void find_and_publish_gap(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan_msg);
-
 
 };
 

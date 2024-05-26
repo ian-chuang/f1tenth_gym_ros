@@ -1,6 +1,5 @@
-// Before you start, please read: https://arxiv.org/pdf/1105.1186.pdf
-// Make sure you have read through the header file as well
-#include "obs_detect_node/obs_detect_node.h"
+// built off of https://github.com/ladavis4/F1Tenth_Final_Project_and_ICRA2022/tree/main/obs_detect_pkg
+#include "obs_detect/obs_detect.h"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include <Eigen/Geometry>
 #include "std_msgs/msg/bool.hpp"
@@ -8,16 +7,14 @@
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "std_msgs/msg/float32_multi_array.hpp"
-// #include "std_msgs/msg/MultiArrayDimension.hpp"
 #include "geometry_msgs/msg/pose_array.hpp"
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
 
-// Destructor of the OBS_DETECT classFalse
 OBS_DETECT::~OBS_DETECT()
 {
-    // Do something in here, free up used memory, print message, etc.
     RCLCPP_INFO(rclcpp::get_logger("OBS_DETECT"), "%s\n", "OBS_DETECT shutting down");
 }
+
 // Constructor of the OBS_DETECT class
 OBS_DETECT::OBS_DETECT() : rclcpp::Node("obs_detect_node")
 {
@@ -30,7 +27,7 @@ OBS_DETECT::OBS_DETECT() : rclcpp::Node("obs_detect_node")
     this->declare_parameter("scan_topic", "/scan");
     this->declare_parameter("drive_topic", "/drive");
     this->declare_parameter("pose_topic", "/pf/pose/odom");
-
+    // get params
     std::string spline_file_name = this->get_parameter("spline_file_name").as_string();
     std::string coll_grid_topic = this->get_parameter("coll_grid_topic").as_string();
     std::string coll_path_topic = this->get_parameter("coll_path_topic").as_string();
@@ -49,10 +46,7 @@ OBS_DETECT::OBS_DETECT() : rclcpp::Node("obs_detect_node")
     // ROS subscribers
     scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(scan_topic, 1, std::bind(&OBS_DETECT::scan_callback, this, std::placeholders::_1));
     drive_sub_ = this->create_subscription<ackermann_msgs::msg::AckermannDriveStamped>(drive_topic, 1, std::bind(&OBS_DETECT::drive_callback, this, std::placeholders::_1));
-
     pose_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(pose_topic, 1, std::bind(&OBS_DETECT::pose_callback, this, std::placeholders::_1));
-
-    RCLCPP_INFO(rclcpp::get_logger("OBS_DETECT"), "loading map: %s\nscan_topic: %s\npose_topic: %s\n", spline_file_name.c_str(), scan_topic.c_str(), pose_topic.c_str());
 
     // Read in spline points
     std::vector<float> row;
@@ -74,7 +68,7 @@ OBS_DETECT::OBS_DETECT() : rclcpp::Node("obs_detect_node")
         RCLCPP_INFO(rclcpp::get_logger("OBS_DETECT"), "Error opening file\n");
     }
 
-    // Initialzie pose
+    // Initialize pose
     q.x() = 0;
     q.y() = 0;
     q.z() = 0;
@@ -84,7 +78,6 @@ OBS_DETECT::OBS_DETECT() : rclcpp::Node("obs_detect_node")
     collision_l = 3.0;
 }
 
-/// MAIN CALLBACK FUNCTIONS///
 void OBS_DETECT::scan_callback(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan_msg)
 {
     // Receive a scan message and update the occupancy grid
@@ -96,23 +89,15 @@ void OBS_DETECT::scan_callback(const sensor_msgs::msg::LaserScan::ConstSharedPtr
 
     if (got_pose_flag)
     {
-
-        if (publish_thetas == true)
-        {
-            find_and_publish_gap(scan_msg);
-        }
-
         // Find the position of the local goal
-
         global_obs_detect_goal = spline_points[goal_spline_idx];
         Eigen::Vector3d local_point((global_obs_detect_goal[0] - current_car_pose.pose.pose.position.x), (global_obs_detect_goal[1] - current_car_pose.pose.pose.position.y), 0);
         Eigen::Vector3d local_goal = rotation_mat.inverse() * local_point;
         int x_goal = (local_goal[0] / resolution) + center_x;
         int y_goal = (local_goal[1] / resolution) + center_y;
-
-        std::vector<signed char> occugrid_flat(occu_grid_y_size * occu_grid_x_size);
-
+        
         // Build the occupancy grid
+        std::vector<signed char> occugrid_flat(occu_grid_y_size * occu_grid_x_size);
         int x_scan;
         int y_scan;
         for (int i = 0; i < scan_msg->ranges.size(); i++)
@@ -149,21 +134,24 @@ void OBS_DETECT::scan_callback(const sensor_msgs::msg::LaserScan::ConstSharedPtr
             }
         }
 
+        // publish occupancy grid
         if (publish_rviz == true)
         {
             publish_grid(occugrid_flat);
         }
+
+        // check if obstacle in grid
         check_to_activate_obs_avoid(occugrid_flat);
     }
 }
 
 void OBS_DETECT::check_to_activate_obs_avoid(std::vector<signed char> &occugrid_flat)
 {
-
+    // only run once pose is received
     if (got_pose_flag == true)
     {
+        // calculate num iterations
         int max_spline_idx = spline_points.size();
-
         int increment = 10;
         int iterations = 0;
         bool run_check = true;
@@ -180,6 +168,7 @@ void OBS_DETECT::check_to_activate_obs_avoid(std::vector<signed char> &occugrid_
             run_check = false;
         }
 
+        // run obs avoid check
         std::vector<std::vector<int>> grid_interp_points;
         int goal_point[2];
         spline_point2occu_coordinate(car_spline_idx, goal_point);
@@ -187,7 +176,6 @@ void OBS_DETECT::check_to_activate_obs_avoid(std::vector<signed char> &occugrid_
         std::vector<std::vector<int>> segment_interp_points;
         segment_interp_points = draw_connecting_line(origin_point, goal_point);
         grid_interp_points.insert(grid_interp_points.end(), segment_interp_points.begin(), segment_interp_points.end());
-
         if (run_check == true)
         {
             int origin_idx;
@@ -229,37 +217,38 @@ void OBS_DETECT::check_to_activate_obs_avoid(std::vector<signed char> &occugrid_
                 grid_interp_points.insert(grid_interp_points.end(), segment_interp_points.begin(), segment_interp_points.end());
             }
         }
-        std::vector<signed char> path_data(occu_grid_y_size * occu_grid_x_size);
 
+        // update path data
+        std::vector<signed char> path_data(occu_grid_y_size * occu_grid_x_size);
         for (int i = 0; i < grid_interp_points.size(); i++)
         {
             if (grid_interp_points[i][1] >= 0 && grid_interp_points[i][0] >= 0)
             {
-                // if( ((grid_interp_points[i][1])* occu_grid_x_size) + (grid_interp_points[i][0]) < (occu_grid_x_size * occu_grid_y_size)){
                 if (((grid_interp_points[i][1]) * occu_grid_x_size) + (grid_interp_points[i][0]) < path_data.size())
                 {
                     path_data[((grid_interp_points[i][1]) * occu_grid_x_size) + (grid_interp_points[i][0])] = 100;
                 }
-                //}
             }
         }
+
         // Check if there is a collision!
         use_coll_avoid = false;
         for (int i = 0; i < path_data.size(); i++)
         {
             if (path_data[i] == 100 && i < occugrid_flat.size() && occugrid_flat[i] == 100)
             {
-                // hit_count++;
                 use_coll_avoid = true;
                 break;
             }
         }
 
+        // publish the racline path on the grid
         if (publish_rviz == true)
         {
             publish_path(path_data);
         }
 
+        // publish obs avoid msg
         auto use_coll_avoid_msg = std_msgs::msg::Bool();
         if (use_coll_avoid == true)
         {
@@ -286,8 +275,8 @@ void OBS_DETECT::pose_callback(const nav_msgs::msg::Odometry::ConstSharedPtr pos
 {
     // The pose callback when subscribed to particle filter's inferred pose
     // Check to see if we need gap follow
-    // Args:msg
-
+    
+    // get msg
     current_car_pose = *pose_msg;
     q.x() = current_car_pose.pose.pose.orientation.x;
     q.y() = current_car_pose.pose.pose.orientation.y;
@@ -295,71 +284,24 @@ void OBS_DETECT::pose_callback(const nav_msgs::msg::Odometry::ConstSharedPtr pos
     q.w() = current_car_pose.pose.pose.orientation.w;
     rotation_mat = q.normalized().toRotationMatrix();
 
+    // update waypoint idx of car from current pose
     car_spline_idx = find_spline_index(current_car_pose.pose.pose.position.x, current_car_pose.pose.pose.position.y);
     goal_spline_idx = find_obs_detect_goal_idx(collision_l, spline_points, car_spline_idx);
+
+    // update flag
     got_pose_flag = true;
 }
 
 void OBS_DETECT::drive_callback(const ackermann_msgs::msg::AckermannDriveStamped::ConstSharedPtr drive_msg)
 {
     // The drive callback gets the published drive message
-
     ackermann_msgs::msg::AckermannDriveStamped msg = *drive_msg;
+    // update vals
     current_car_speed = msg.drive.speed;
     collision_l = current_car_speed * collision_time_buffer;
 }
 
-void OBS_DETECT::find_and_publish_gap(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan_msg)
-{
-    std::vector<float> angles_raw;
-    float cur_angle;
-    int num_readings = scan_msg->ranges.size();
-    for (int i = 0; i < scan_msg->ranges.size(); i++)
-    {
-        cur_angle = (scan_msg->angle_increment * i) + (scan_msg->angle_min);
-        angles_raw.push_back(cur_angle);
-    }
-    // Find the start and end of the angle cutoff
-    // Reduces the number of ranges looked at
-    int cutoff_start_idx;
-    int cutoff_end_idx;
-    for (int i = 0; i < num_readings; i++)
-    {
-        if (angles_raw[i] > (angle_cutoff * -1.0))
-        {
-            cutoff_start_idx = i;
-            break;
-        }
-    }
-    for (int i = 0; i < num_readings; i++)
-    {
-        if (angles_raw[i] > (angle_cutoff))
-        {
-            cutoff_end_idx = i;
-            break;
-        }
-    }
-    int num_readings_p = cutoff_end_idx - cutoff_start_idx;
-    // Create new "processed" angle and ranges vectors as a subset of the raw ranges and angles
-    std::vector<float> ranges_p(&scan_msg->ranges[cutoff_start_idx], &scan_msg->ranges[cutoff_end_idx]);
-    std::vector<float> angles_p(&angles_raw[cutoff_start_idx], &angles_raw[cutoff_end_idx]);
-    preprocess_lidar(ranges_p, num_readings_p); // updates ranges_p
-    int num_disp;
-    std::vector<int> disp_idx;
-    num_disp = find_disparities(disp_idx, ranges_p, num_readings_p);
-    // RCLCPP_INFO(this->get_logger(), "Number of disparities: %d", num_disp);
-    std::vector<float> ranges_p_clean = ranges_p;
-    set_disparity(ranges_p, num_readings_p, disp_idx, num_disp, scan_msg->angle_increment, ranges_p_clean);
-    set_close_bubble(ranges_p, angles_p, num_readings_p, scan_msg->angle_increment);
-    int *gap_idxes = find_max_gap(ranges_p, num_readings_p); // find the drive idx from the max gap
-    // RCLCPP_INFO(this->get_logger(), "Gap start: %d, Gap end %d", gap_idxes[0], gap_idxes[1]);
-    auto gap_theta_msg = std_msgs::msg::Float32MultiArray();
-    std::vector<float> gap_data = {angles_p[gap_idxes[0]], angles_p[gap_idxes[1]]};
-    gap_theta_msg.data = gap_data;
-    gap_theta_pub->publish(gap_theta_msg);
-}
-
-/// FUNCTIONS FOR DETECTING OBS_DETECT ON/OFF ///
+// get occupancy grid coordinate from spline point
 int *OBS_DETECT::spline_point2occu_coordinate(int spline_idx, int *occu_point)
 {
     float x_local_w = spline_points[spline_idx][0] - current_car_pose.pose.pose.position.x;
@@ -373,12 +315,12 @@ int *OBS_DETECT::spline_point2occu_coordinate(int spline_idx, int *occu_point)
     return occu_point;
 }
 
+/*
+This function takes the origin point and goal point in occugrid coordinates and returns a 2D array segment_interp_points using bresenhams_line algorithm.
+The connecting line is widened to ensure contact with other points
+*/
 std::vector<std::vector<int>> OBS_DETECT::draw_connecting_line(int origin_point[2], int goal_point[2])
 {
-    /*
-    This function takes the origin point and goal point in occugrid coordinates and returns a 2D array segment_interp_points using bresenhams_line algorithm.
-    The connecting line is widened to ensure contact with other points
-    */
     std::vector<std::vector<int>> segment_interp_points;
     segment_interp_points = bresenhams_line_algorithm(goal_point, origin_point);
 
@@ -407,26 +349,6 @@ std::vector<std::vector<int>> OBS_DETECT::draw_connecting_line(int origin_point[
                 segment_interp_points.push_back(added_point);
             }
         }
-        /*
-        for(int i=0;i<size_val;i++){
-            for(int j=-add_val_y;j<=add_val_y;j++){
-                for(int k=-add_val_x;k<=add_val_x;k++){
-                    if(segment_interp_points[i][0]+k >0 && segment_interp_points[i][0]+k <occu_grid_x_size){
-                        if( segment_interp_points[i][1]+j >0 && segment_interp_points[i][1]+j <occu_grid_y_size){
-                            int x_val = segment_interp_points[i][0]+k;
-                            int y_val = segment_interp_points[i][1]+j;
-                            std::vector<int> add_points{x_val,y_val};
-                            if(x_val >0 && x_val <occu_grid_x_size){
-                                if( y_val >0 && y_val <occu_grid_y_size){
-                                    segment_interp_points.push_back(add_points);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        */
     }
     return segment_interp_points;
 }
@@ -578,7 +500,6 @@ int OBS_DETECT::find_obs_detect_goal_idx(float l_dist, std::vector<std::vector<f
     return goal_point_idx;
 }
 
-// Publishers
 void OBS_DETECT::publish_grid(std::vector<signed char> &occugrid_flat)
 {
     // Publish the occupancy grid
@@ -598,7 +519,6 @@ void OBS_DETECT::publish_grid(std::vector<signed char> &occugrid_flat)
     grid_pub->publish(new_grid);
 }
 
-// Publishers
 void OBS_DETECT::publish_path(std::vector<signed char> &occugrid_flat)
 {
     // Publish the occupancy grid
@@ -616,216 +536,4 @@ void OBS_DETECT::publish_path(std::vector<signed char> &occugrid_flat)
     new_grid.info.origin.position.y -= shift_in_global_coords[1];
     new_grid.data = occugrid_flat;
     path_pub->publish(new_grid);
-}
-
-void OBS_DETECT::preprocess_lidar(std::vector<float> &ranges, int num_readings)
-{
-    std::vector<float> old_ranges;
-    old_ranges = ranges;
-
-    // 1.Setting each value to the mean over some window
-    float running_mean = 0.0;
-    ranges[0] = old_ranges[0];
-    for (int i = 1; i < (num_readings - 1); i++)
-    {
-        running_mean = 0.0;
-        for (int j = -1; j < 2; j++)
-        {
-            running_mean += old_ranges[i + j];
-        }
-        ranges[i] = running_mean / 3.0;
-        if (ranges[i] < 0)
-        {
-            ranges[i] = 0;
-        }
-    }
-    ranges[num_readings - 1] = old_ranges[num_readings - 1];
-
-    // 2.Rejecting high values
-    for (int i = 0; i < num_readings; i++)
-    {
-        if (ranges[i] > max_range_threshold)
-        {
-            ranges[i] = max_range_threshold;
-        }
-    }
-
-    return;
-}
-
-int *OBS_DETECT::find_max_gap(std::vector<float> &ranges, int num_readings)
-{
-    // Return the start index & end index of the max gap
-    int current_gap_width = 0; // width of the current gap being tested
-    int max_gap_width = 0;     // largest gap found so far
-    int gap_flag = 0;          // 0 for no gap, 1 for gap
-    int current_start_idx = 0; // start index for current gap being tested
-
-    int start_idx = 0; // overall largest gap start
-    int end_idx = 0;   // overall largest gap end
-
-    static int gap_idxes[2];
-
-    for (int i = 0; i < num_readings; i++)
-    {
-        if (ranges[i] > 0.0)
-        {
-            if (gap_flag == 0)
-            {
-                // New gap
-                current_start_idx = i;
-            }
-            gap_flag = 1;
-            current_gap_width += 1;
-        }
-        else
-        {
-            if (gap_flag == 1)
-            {
-                // Gap ended
-                if (current_gap_width > max_gap_width)
-                {
-                    // New largest gap
-                    start_idx = current_start_idx;
-                    end_idx = i - 1;
-                    max_gap_width = current_gap_width;
-                }
-            }
-            gap_flag = 0;
-            current_gap_width = 0;
-        }
-    }
-    if (current_gap_width > max_gap_width)
-    {
-        start_idx = current_start_idx;
-        end_idx = num_readings - 1;
-    }
-
-    gap_idxes[0] = start_idx;
-    gap_idxes[1] = end_idx;
-    return gap_idxes;
-}
-
-int OBS_DETECT::find_disparities(std::vector<int> &disp_idx, std::vector<float> &ranges, int num_readings)
-{
-    int disp_count = 0;
-    for (int i = 1; i < num_readings; i++)
-    {
-        if (abs(ranges[i] - ranges[i - 1]) > disp_threshold)
-        {
-            // RCLCPP_INFO(this->get_logger(), "Disparity IDX [%d], Range 1: %f  Range 2:%f", i, ranges[i], ranges[i-1]);
-            // there is a disparity
-            if (ranges[i] < ranges[i - 1])
-            {
-                disp_idx.push_back(i);
-            }
-            else
-            {
-                disp_idx.push_back(i - 1);
-            }
-            disp_count += 1;
-        }
-    }
-    return disp_count;
-}
-
-void OBS_DETECT::set_disparity(std::vector<float> &ranges, int num_points, std::vector<int> &disp_idx, int num_disp, float angle_increment, std::vector<float> &ranges_clean)
-{
-    float theta;
-    int n;
-    float n_float;
-    int bubble_idx;
-    float bubble_dist;
-
-    for (int i = 0; i < num_disp; i++)
-    {
-        bubble_idx = disp_idx[i];
-
-        bubble_dist = ranges_clean[bubble_idx];
-
-        if (bubble_dist > bubble_dist_threshold)
-        {
-            continue;
-        }
-
-        theta = atan2((car_width / 2.0), bubble_dist);
-        n_float = theta / angle_increment; // Is 270 radians!!!!
-        n = static_cast<int>(n_float);
-        // RCLCPP_INFO(this->get_logger(), "Bubble idx [%d], N value [%d], Theta [%f],  Bubble range [%f]", bubble_idx, n, theta, ranges_clean[bubble_idx]);
-
-        // Cases to fix out of bounds errors
-        if (bubble_idx + n > num_points)
-        {
-            n = num_points - bubble_idx;
-        }
-        if (bubble_idx - n < 0.0)
-        {
-            n = bubble_idx;
-        }
-
-        // Set points within bubble to zero
-        for (int j = 0; j < n + 1; j++)
-        {
-            if (bubble_dist < ranges[bubble_idx + j])
-            {
-                ranges[bubble_idx + j] = bubble_dist;
-            }
-        }
-        for (int j = 0; j < n + 1; j++)
-        {
-            if (bubble_dist < ranges[bubble_idx - j])
-            {
-                ranges[bubble_idx - j] = bubble_dist;
-            }
-        }
-    }
-}
-
-void OBS_DETECT::set_close_bubble(std::vector<float> &ranges, std::vector<float> &angles, int num_points, float angle_increment)
-{
-    int close_idx;
-    float low_val = 100.0;
-
-    // Find the closest point
-    for (int i = 0; i < num_points; i++)
-    {
-        if (ranges[i] < low_val)
-        {
-            low_val = ranges[i];
-            close_idx = i;
-        }
-    }
-    float theta;
-    int n;
-    float n_float;
-    int bubble_idx;
-
-    bubble_idx = close_idx;
-
-    // Use trig to find number of points to eliminate
-    theta = atan2((car_width / 2.0), ranges[bubble_idx]);
-    n_float = theta / angle_increment; // Is 270 radians!!!!
-    n = static_cast<int>(n_float);
-
-    // Cases to fix out of bounds errors
-    int n_up = n;
-    int n_down = n;
-    if (bubble_idx + n > num_points)
-    {
-        n_up = num_points - bubble_idx;
-    }
-    if (bubble_idx - n < 0.0)
-    {
-        n_down = bubble_idx;
-    }
-
-    // Set points within bubble to zero
-    for (int j = 0; j < n_up + 1; j++)
-    {
-        ranges[bubble_idx + j] = 0.0;
-    }
-    for (int j = 0; j < n_down + 1; j++)
-    {
-        ranges[bubble_idx - j] = 0.0;
-    }
 }

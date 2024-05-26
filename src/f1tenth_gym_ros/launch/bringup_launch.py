@@ -61,6 +61,4 @@ def generate_launch_description():
     ld.add_action(obs_detect_node)
     ld.add_action(gap_follow_node)
 
-
-
     return ld

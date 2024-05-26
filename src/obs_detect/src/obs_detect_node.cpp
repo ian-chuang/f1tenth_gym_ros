@@ -1,4 +1,4 @@
-#include "obs_detect_node/obs_detect_node.h"
+#include "obs_detect/obs_detect.h"
 
 int main(int argc, char **argv)
 {
