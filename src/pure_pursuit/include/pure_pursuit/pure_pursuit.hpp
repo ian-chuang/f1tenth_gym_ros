@@ -36,6 +36,35 @@ class PurePursuit : public rclcpp::Node {
    public:
     PurePursuit();
 
+    double to_radians(double degrees);
+
+    double to_degrees(double radians);
+    
+    double p2pdist(double &x1, double &x2, double &y1, double &y2);
+
+    void load_waypoints();
+
+    void visualize_lookahead_point(Eigen::Vector3d &point);
+    void visualize_current_point(Eigen::Vector3d &point);
+
+    void get_waypoint();
+
+    void quat_to_rot(double q0, double q1, double q2, double q3);
+
+    void transformandinterp_waypoint();
+
+    double p_controller();
+
+    double get_velocity(double steering_angle);
+
+    void publish_message(double steering_angle);
+
+    void odom_callback(const nav_msgs::msg::Odometry::ConstSharedPtr odom_submsgObj);
+
+    void timer_callback();
+
+    void use_obs_avoid_callback(const std_msgs::msg::Bool::ConstSharedPtr obs_avoid_submsgObj);
+
    private:
     // global static (to be shared by all objects) and dynamic variables (each instance gets its own copy -> managed on the stack)
     struct csvFileData {
@@ -100,31 +129,5 @@ class PurePursuit : public rclcpp::Node {
     std::shared_ptr<tf2_ros::TransformListener> transform_listener_{nullptr};
     std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
 
-    // private functions
-    double to_radians(double degrees);
-    double to_degrees(double radians);
-    double p2pdist(double &x1, double &x2, double &y1, double &y2);
-
-    void load_waypoints();
-
-    void visualize_lookahead_point(Eigen::Vector3d &point);
-    void visualize_current_point(Eigen::Vector3d &point);
-
-    void get_waypoint();
-
-    void quat_to_rot(double q0, double q1, double q2, double q3);
-
-    void transformandinterp_waypoint();
-
-    double p_controller();
-
-    double get_velocity(double steering_angle);
-
-    void publish_message(double steering_angle);
-
-    void odom_callback(const nav_msgs::msg::Odometry::ConstSharedPtr odom_submsgObj);
-
-    void timer_callback();
-
-    void use_obs_avoid_callback(const std_msgs::msg::Bool::ConstSharedPtr obs_avoid_submsgObj);
+    
 };
