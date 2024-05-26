@@ -34,7 +34,7 @@ def generate_launch_description():
 
     # Pure pursuit
     pure_pursuit_node = Node(
-        package = 'pure_pursuit_pkg',
+        package = 'pure_pursuit',
         executable = 'pure_pursuit',
         name = 'pure_pursuit',
         parameters = [pure_pursuit_config]

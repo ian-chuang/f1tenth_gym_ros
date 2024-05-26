@@ -1,18 +1,20 @@
 pure_pursuit:
   ros__parameters:
-    trajectory_csv: "/sim_ws/src/f1tenth_gym_ros/racelines/levine.csv"
-    publish_rviz: True
-    pp_steer_L_fast: 2.5
-    pp_steer_L_slow: 1.25
-    kp_fast: 0.35
-    kp_slow: 0.5
-    L_threshold_speed: 4.0
-    odom_topic: "ego_racecar/odom"
-    pp_current_goal_topic: "pp_current_goal_rviz"
-    pp_spline_topic: "pp_spline_rviz"
-    color_points_topic: "color_points_rviz"
-    spline_index_topic: "car_spline_index"
-    drive_topic: "drive"
-    global_goal_topic: "global_goal_pure_pursuit"
+    waypoints_path: "/sim_ws/src/f1tenth_gym_ros/racelines/levine.csv"
+    odom_topic: "/ego_racecar/odom"
+    car_refFrame: "ego_racecar/base_link"
+    global_refFrame: "map"
+    drive_topic: "/drive"
+    rviz_current_waypoint_topic: "/current_waypoint"
+    rviz_lookahead_waypoint_topic: "/lookahead_waypoint"
+    velocity_topic: "pure_pursuit_velocity"
     use_obs_avoid_topic: "use_obs_avoid"
-    
+
+    # Pure Pursuit Parameters
+    # Lookahead is computed using the following: lookahead = min(max(min_lookahead, max_lookahead * curr_velocity / lookahead_ratio), max_lookahead);
+    min_lookahead: 0.5
+    max_lookahead: 3.0 # lookahead when the car is going around max velocity
+    lookahead_ratio: 8.0 # approximately the max velocity
+    K_p: 0.5
+    steering_limit: 25.0
+    velocity_percentage: 1.0 # the limit, can only do 1 lap with clean tires

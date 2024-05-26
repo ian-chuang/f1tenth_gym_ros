@@ -5,7 +5,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
 #include "std_msgs/msg/bool.hpp"
-#include "std_msgs/msg/int16.hpp"
+#include "std_msgs/msg/float64.hpp"
 #include <fstream>
 #include <iostream>
 
@@ -26,7 +26,7 @@ class ReactiveFollowGap : public rclcpp::Node {
             this->declare_parameter("drive_topic", "/drive");
             this->declare_parameter("lidarscan_topic", "/scan");
             this->declare_parameter("decision_topic", "/use_obs_avoid");
-            this->declare_parameter("index_topic", "/car_spline_index");
+            this->declare_parameter("pure_pursuit_velocity_topic", "pure_pursuit_velocity");
             this->declare_parameter("velocity_file_name", "/sim_ws/src/f1tenth_gym_ros/racelines/levine.csv");
             this->declare_parameter("window_size", 3);
             this->declare_parameter("max_range_threshold", 7.0);
@@ -41,7 +41,7 @@ class ReactiveFollowGap : public rclcpp::Node {
             std::string drive_topic = this->get_parameter("drive_topic").as_string();
             std::string lidarscan_topic = this->get_parameter("lidarscan_topic").as_string();
             std::string decision_topic = this->get_parameter("decision_topic").as_string();
-            std::string index_topic = this->get_parameter("index_topic").as_string();
+            std::string pure_pursuit_velocity_topic = this->get_parameter("pure_pursuit_velocity_topic").as_string();
             std::string velocity_file_name = this->get_parameter("velocity_file_name").as_string();
             window_size = this->get_parameter("window_size").as_int();
             max_range_threshold = this->get_parameter("max_range_threshold").as_double();
@@ -57,7 +57,7 @@ class ReactiveFollowGap : public rclcpp::Node {
             drive_publisher = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>(drive_topic, 1);
             scan_sub = this->create_subscription<sensor_msgs::msg::LaserScan>(lidarscan_topic, 1, std::bind(&ReactiveFollowGap::lidar_callback, this, _1));
             gap_sub = this->create_subscription<std_msgs::msg::Bool>(decision_topic, 1, std::bind(&ReactiveFollowGap::gap_callback, this, _1));
-            car_index_sub = this->create_subscription<std_msgs::msg::Int16>(index_topic, 1, std::bind(&ReactiveFollowGap::index_callback, this, _1));
+            velocity_sub = this->create_subscription<std_msgs::msg::Float64>(pure_pursuit_velocity_topic, 1, std::bind(&ReactiveFollowGap::velocity_callback, this, _1));
 
             //Read in velocity points
             std::vector<float> row;
@@ -101,7 +101,7 @@ class ReactiveFollowGap : public rclcpp::Node {
         float disp_threshold = .4;//meter
         float bubble_dist_threshold = 6; //meteres
         std::vector<float> velocity_points; 
-        int car_spline_index = 0;
+        float pure_pursuit_velocity = 0;
         
 
 
@@ -110,7 +110,7 @@ class ReactiveFollowGap : public rclcpp::Node {
         rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub;
         rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr gap_sub;
         rclcpp::Publisher<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr drive_publisher;
-        rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr car_index_sub;
+        rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr velocity_sub;
 
 
 
@@ -182,9 +182,8 @@ class ReactiveFollowGap : public rclcpp::Node {
                     drive_msg.drive.steering_angle = 0;
 
                 }
-                float spline_velocity = velocity_points[car_spline_index]; 
                 // RCLCPP_INFO(this->get_logger(), "car spline index %d", car_spline_index);
-                drive_msg.drive.speed = drive_speed_calc(ranges_p, angles_p, num_readings_p, spline_velocity); //Scales the velocity from the pure pursuit velocity to some lower bound, depending on the distance of range readings... maybe steer angle would be better? 
+                drive_msg.drive.speed = drive_speed_calc(ranges_p, angles_p, num_readings_p, pure_pursuit_velocity); //Scales the velocity from the pure pursuit velocity to some lower bound, depending on the distance of range readings... maybe steer angle would be better? 
                 drive_publisher->publish(drive_msg);
             }
         }
@@ -537,10 +536,10 @@ class ReactiveFollowGap : public rclcpp::Node {
             use_gap = gap_bool->data;
         }
 
-        void index_callback(const std_msgs::msg::Int16::ConstSharedPtr index_val)
+        void velocity_callback(const std_msgs::msg::Float64::ConstSharedPtr val)
         {
-            car_spline_index = index_val->data;
-            std::cout<<"Got index value: "<<car_spline_index<<std::endl;
+            pure_pursuit_velocity = val->data;
+            std::cout<<"Got velocity value: "<<pure_pursuit_velocity<<std::endl;
         }
 
 };
