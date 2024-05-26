@@ -1,4 +1,4 @@
-obs_detect_node:
+obs_detect:
   ros__parameters:
     spline_file_name: "/sim_ws/src/f1tenth_gym_ros/racelines/levine.csv"
     coll_grid_topic: "/coll_grid_pub_rviz"

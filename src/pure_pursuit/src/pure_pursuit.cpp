@@ -1,4 +1,4 @@
-#include "pure_pursuit.hpp"
+#include "pure_pursuit/pure_pursuit.hpp"
 
 #include <math.h>
 #include <tf2_ros/buffer.h>
@@ -346,12 +346,4 @@ void PurePursuit::timer_callback() {
 
 void PurePursuit::use_obs_avoid_callback(const std_msgs::msg::Bool::ConstSharedPtr use_obs_avoid_submsgObj) {
     use_obs_avoid = use_obs_avoid_submsgObj->data;
-}
-
-int main(int argc, char **argv) {
-    rclcpp::init(argc, argv);
-    auto node_ptr = std::make_shared<PurePursuit>();  // initialise node pointer
-    rclcpp::spin(node_ptr);
-    rclcpp::shutdown();
-    return 0;
 }

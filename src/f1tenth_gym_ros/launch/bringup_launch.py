@@ -42,16 +42,16 @@ def generate_launch_description():
 
     # Obstacle detection
     obs_detect_node = Node(
-        package = 'obs_detect_pkg',
-        executable = 'obs_detect_node',
-        name = 'obs_detect_node',
+        package = 'obs_detect',
+        executable = 'obs_detect',
+        name = 'obs_detect',
         parameters = [obs_detect_config]
     )
 
     # Obstacle avoidance
     gap_follow_node = Node(
         package = 'gap_follow',
-        executable = 'reactive_node',
+        executable = 'gap_follow',
         name = 'gap_follow',
         parameters = [gap_follow_config]
     )
