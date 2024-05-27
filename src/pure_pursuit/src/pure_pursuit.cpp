@@ -101,7 +101,7 @@ void PurePursuit::load_waypoints() {
 
     // check if open
     if (!csvFile_waypoints.is_open()) {
-        RCLCPP_ERROR(this->get_logger(), "Cannot Open CSV File: %s", waypoints_path);
+        RCLCPP_ERROR(this->get_logger(), "Cannot Open CSV File: %s", waypoints_path.c_str());
         return;
     } else {
         RCLCPP_INFO(this->get_logger(), "CSV File Opened");
@@ -138,7 +138,7 @@ void PurePursuit::load_waypoints() {
         average_dist_between_waypoints += p2pdist(waypoints.X[i], waypoints.X[i + 1], waypoints.Y[i], waypoints.Y[i + 1]);
     }
     average_dist_between_waypoints /= num_waypoints;
-    RCLCPP_INFO(this->get_logger(), "Finished loading %d waypoints from %s", num_waypoints, waypoints_path);
+    RCLCPP_INFO(this->get_logger(), "Finished loading %d waypoints from %s", num_waypoints, waypoints_path.c_str());
     RCLCPP_INFO(this->get_logger(), "Average distance between waypoints: %f", average_dist_between_waypoints);
 }
 

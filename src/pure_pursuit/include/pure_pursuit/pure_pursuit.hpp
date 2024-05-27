@@ -18,6 +18,7 @@ interpolation yet.
 #include <sstream>
 #include <string>
 #include <vector>
+#include <gtest/gtest.h>
 
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float64.hpp"
@@ -66,6 +67,7 @@ class PurePursuit : public rclcpp::Node {
     void use_obs_avoid_callback(const std_msgs::msg::Bool::ConstSharedPtr obs_avoid_submsgObj);
 
    private:
+   FRIEND_TEST(pure_pursuit, ConstructorTest);
     // global static (to be shared by all objects) and dynamic variables (each instance gets its own copy -> managed on the stack)
     struct csvFileData {
         std::vector<double> X;

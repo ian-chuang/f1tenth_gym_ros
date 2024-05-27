@@ -1,13 +1,21 @@
 #include <gtest/gtest.h>
 #include "pure_pursuit/pure_pursuit.hpp"
 
-TEST(PurePursuitTest, ConstructorTest)
+#include <gtest/gtest.h>
+
+TEST(pure_pursuit, ConstructorTest)
 {
   // Create an instance of PurePursuit
   PurePursuit purePursuit;
+  EXPECT_EQ(purePursuit.min_lookahead, 0.5);
+  EXPECT_EQ(purePursuit.max_lookahead, 1.0);
+  EXPECT_EQ(purePursuit.lookahead_ratio, 8.0);
+  EXPECT_EQ(purePursuit.K_p, 0.5);
+  EXPECT_EQ(purePursuit.steering_limit, 25.0);
+  EXPECT_EQ(purePursuit.velocity_percentage, 0.6);
 }
 
-TEST(PurePursuitTest, ToRadiansTest) {
+TEST(pure_pursuit, ToRadiansTest) {
   PurePursuit pure_pursuit;
 
   // Test with negative angle
