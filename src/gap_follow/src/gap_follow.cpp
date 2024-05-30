@@ -13,7 +13,6 @@ ReactiveFollowGap::ReactiveFollowGap() : Node("reactive_node") {
     this->declare_parameter("lidarscan_topic", "/scan");
     this->declare_parameter("decision_topic", "/use_obs_avoid");
     this->declare_parameter("pure_pursuit_velocity_topic", "pure_pursuit_velocity");
-    this->declare_parameter("velocity_file_name", "/sim_ws/src/f1tenth_gym_ros/racelines/levine.csv");
     this->declare_parameter("window_size", 3);
     this->declare_parameter("max_range_threshold", 7.0);
     this->declare_parameter("max_drive_range_threshold", 5.0);
@@ -29,7 +28,6 @@ ReactiveFollowGap::ReactiveFollowGap() : Node("reactive_node") {
     std::string lidarscan_topic = this->get_parameter("lidarscan_topic").as_string();
     std::string decision_topic = this->get_parameter("decision_topic").as_string();
     std::string pure_pursuit_velocity_topic = this->get_parameter("pure_pursuit_velocity_topic").as_string();
-    std::string velocity_file_name = this->get_parameter("velocity_file_name").as_string();
     window_size = this->get_parameter("window_size").as_int();
     max_range_threshold = this->get_parameter("max_range_threshold").as_double();
     max_drive_range_threshold = this->get_parameter("max_drive_range_threshold").as_double();
@@ -45,31 +43,6 @@ ReactiveFollowGap::ReactiveFollowGap() : Node("reactive_node") {
     scan_sub = this->create_subscription<sensor_msgs::msg::LaserScan>(lidarscan_topic, 1, std::bind(&ReactiveFollowGap::lidar_callback, this, _1));
     gap_sub = this->create_subscription<std_msgs::msg::Bool>(decision_topic, 1, std::bind(&ReactiveFollowGap::gap_callback, this, _1));
     velocity_sub = this->create_subscription<std_msgs::msg::Float64>(pure_pursuit_velocity_topic, 1, std::bind(&ReactiveFollowGap::velocity_callback, this, _1));
-
-    //Read in velocity points
-    std::vector<float> row;
-    std::string line, number;
-    std::fstream file (velocity_file_name, std::ios::in);
-    if(file.is_open())
-    {
-        int column = 0;
-        while(getline(file, line))
-        {
-            std::stringstream str(line);
-            while(getline(str, number, ','))
-            {
-                column++;
-                if(column == 3) { // read third column
-                    velocity_points.push_back(std::stof(number));
-                    break; // move to next line
-                }
-            }
-            column = 0; // reset column counter
-        }
-    }
-    else{ 
-        RCLCPP_INFO(this->get_logger(), "Failed to open file: %s", velocity_file_name.c_str());
-    }
 }
 
 void ReactiveFollowGap::lidar_callback(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan_msg) {
