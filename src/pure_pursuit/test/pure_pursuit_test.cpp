@@ -177,6 +177,91 @@ TEST(pure_pursuit, ToDegreeTest8) {
   EXPECT_NEAR(result, degrees, 0.1);
 }
 
+TEST(pure_pursuit, EuclideanDistanceTest0) {
+  PurePursuit pure_pursuit;
+
+  double x1 = 0.0;
+  double y1 = 0.0;
+
+  double x2 = 0.0;
+  double y2 = 0.0;
+
+  double distance = 0.0;
+  double result = pure_pursuit.p2pdist(x1, x2, y1, y2);
+  EXPECT_NEAR(result, distance, 0.1);
+}
+
+TEST(pure_pursuit, EuclideanDistanceTest1) {
+  PurePursuit pure_pursuit;
+
+  double x1 = 1.0;
+  double y1 = 0.0;
+
+  double x2 = -1.0;
+  double y2 = 0.0;
+
+  double distance = 2.0;
+  double result = pure_pursuit.p2pdist(x1, x2, y1, y2);
+  EXPECT_NEAR(result, distance, 0.1);
+}
+
+TEST(pure_pursuit, EuclideanDistanceTest2) {
+  PurePursuit pure_pursuit;
+
+  double x1 = 0.0;
+  double y1 = 1.0;
+
+  double x2 = 0.0;
+  double y2 = -1.0;
+
+  double distance = 2.0;
+  double result = pure_pursuit.p2pdist(x1, x2, y1, y2);
+  EXPECT_NEAR(result, distance, 0.1);
+}
+
+TEST(pure_pursuit, EuclideanDistanceTest3) {
+  PurePursuit pure_pursuit;
+
+  double x1 = 0.0;
+  double y1 = 1.0;
+
+  double x2 = 1.0;
+  double y2 = 0.0;
+
+  double distance = 1.4142; // Approximately sqrt(2)
+  double result = pure_pursuit.p2pdist(x1, x2, y1, y2);
+  EXPECT_NEAR(result, distance, 0.1);
+}
+
+TEST(pure_pursuit, EuclideanDistanceTest4) {
+  PurePursuit pure_pursuit;
+
+  double x1 = 0.0;
+  double y1 = 0.0;
+
+  double x2 = 3.0;
+  double y2 = 4.0;
+
+  double distance = 5.0;
+  double result = pure_pursuit.p2pdist(x1, x2, y1, y2);
+  EXPECT_NEAR(result, distance, 0.1);
+}
+
+TEST(pure_pursuit, EuclideanDistanceTest5) {
+  PurePursuit pure_pursuit;
+
+  double x1 = -10.0;
+  double y1 = 10.0;
+
+  double x2 = 10.0;
+  double y2 = -10.0;
+
+  double distance = 28.2842; // Approximately 20*sqrt(2)
+  double result = pure_pursuit.p2pdist(x1, x2, y1, y2);
+  EXPECT_NEAR(result, distance, 0.1);
+}
+
+
 
 // Add more test cases as needed
 
