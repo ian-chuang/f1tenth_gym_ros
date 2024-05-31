@@ -95,7 +95,7 @@ void OBS_DETECT::scan_callback(const sensor_msgs::msg::LaserScan::ConstSharedPtr
         Eigen::Vector3d local_goal = rotation_mat.inverse() * local_point;
         int x_goal = (local_goal[0] / resolution) + center_x;
         int y_goal = (local_goal[1] / resolution) + center_y;
-        
+
         // Build the occupancy grid
         std::vector<signed char> occugrid_flat(occu_grid_y_size * occu_grid_x_size);
         int x_scan;
@@ -275,7 +275,7 @@ void OBS_DETECT::pose_callback(const nav_msgs::msg::Odometry::ConstSharedPtr pos
 {
     // The pose callback when subscribed to particle filter's inferred pose
     // Check to see if we need gap follow
-    
+
     // get msg
     current_car_pose = *pose_msg;
     q.x() = current_car_pose.pose.pose.orientation.x;

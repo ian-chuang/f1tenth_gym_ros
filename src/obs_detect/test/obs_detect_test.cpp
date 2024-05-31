@@ -1,19 +1,38 @@
 #include <gtest/gtest.h>
 #include "obs_detect/obs_detect.h"
+#include <rclcpp/rclcpp.hpp>
 
-#include <gtest/gtest.h>
-
-TEST(obs_detect, ConstructorTest)
+class OBS_DETECT_Test : public ::testing::Test
 {
-  // Create an instance of PurePursuit
-  OBS_DETECT obs_detect;
-  EXPECT_EQ(obs_detect.current_car_speed, 0.0);
-  EXPECT_EQ(obs_detect.collision_l, 3);
+protected:
+  std::shared_ptr<OBS_DETECT> node_;
+
+  void SetUp() override
+  {
+    rclcpp::init(0, nullptr);
+    node_ = std::make_shared<OBS_DETECT>();
+  }
+
+  void TearDown() override
+  {
+    rclcpp::shutdown();
+  }
+};
+
+TEST_F(OBS_DETECT_Test, ConstructorTest)
+{
+  EXPECT_EQ(node_->current_car_speed, 0.0);
+  EXPECT_EQ(node_->collision_l, 3.0);
+  EXPECT_FALSE(node_->use_coll_avoid);
+  EXPECT_FALSE(node_->got_pose_flag);
+  EXPECT_EQ(node_->collision_detect_counter, 0);
+  EXPECT_EQ(node_->global_obs_detect_goal.size(), 3);
+  EXPECT_EQ(node_->global_obs_detect_goal[0], 0.0);
+  EXPECT_EQ(node_->global_obs_detect_goal[1], 0.0);
+  EXPECT_EQ(node_->global_obs_detect_goal[2], 0.0);
 }
 
-// Add more test cases as needed
-
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
   testing::InitGoogleTest(&argc, argv);
