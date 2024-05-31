@@ -4,7 +4,6 @@ gap_follow:
     lidarscan_topic: "/scan"
     decision_topic: "/use_obs_avoid"
     pure_pursuit_velocity_topic: "pure_pursuit_velocity"
-    velocity_file_name: "/sim_ws/src/f1tenth_gym_ros/racelines/levine.csv"
     window_size: 3
     max_range_threshold: 10.0
     max_drive_range_threshold: 5.0
