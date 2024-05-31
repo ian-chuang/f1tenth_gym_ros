@@ -23,7 +23,6 @@
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float32_multi_array.hpp"
 #include "geometry_msgs/msg/pose_array.hpp"
-/// CHECK: include needed ROS msg type headers and libraries
 
 using namespace std;
 
@@ -70,10 +69,6 @@ public:
     bool got_pose_flag = false;
     int collision_detect_counter = 0;
 
-    // Add friend class declaration here
-    friend class OBS_DETECT_Test;
-
-private:
     // Publishers
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr grid_pub;
     rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr path_pub;
@@ -85,12 +80,12 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
     rclcpp::Subscription<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr drive_sub_;
 
-    // callbacks
+    // Callbacks
     void pose_callback(const nav_msgs::msg::Odometry::ConstSharedPtr pose_msg);
     void scan_callback(const sensor_msgs::msg::LaserScan::ConstSharedPtr scan_msg);
     void drive_callback(const ackermann_msgs::msg::AckermannDriveStamped::ConstSharedPtr drive_msg);
 
-    // functions
+    // Functions
     void check_to_activate_obs_avoid(std::vector<signed char> &obstacle_data);
     std::vector<std::vector<int>> bresenhams_line_algorithm(int goal_point[2], int origin_point[2]);
     int find_spline_index(float x, float y);
