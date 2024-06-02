@@ -1,9 +1,9 @@
-# Safety Node
+# Emergency Braking Node
 The Safety Node implements Automatic Emergency Breaking (AEB) through Time to Collision (TTC) calculations. This the time it would take for the car to collide with an obstacle if it maintained its current heading and velocity.
 
 We approximate the time to collision using Instantaneous Time to Collision (iTTC), which is the ratio of instantaneous range to range rate calculated from current range measurements and velocity measurements of the vehicle:
 
-$$\iTTC_i(t) = \frac{r_i(t)}{[-\dot{r}_i(t)]_+}$$
+$$\iTTC_i(t) = \frac{r_i(t)}{[-\dot{r}_i(t)]^+}$$
 
 where $r_i$ is the instantaneous range measurements and $\dot{r}$ is the current range rates. The operator $[x]_+$ is defined as $\max(x, 0)$.
 
