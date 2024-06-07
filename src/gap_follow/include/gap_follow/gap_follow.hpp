@@ -17,7 +17,6 @@
 class ReactiveFollowGap : public rclcpp::Node {
 public:
     ReactiveFollowGap();
-private:
 
     // gap params
     int window_size = 3; 

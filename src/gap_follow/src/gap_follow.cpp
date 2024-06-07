@@ -16,7 +16,7 @@ ReactiveFollowGap::ReactiveFollowGap() : Node("reactive_node") {
     this->declare_parameter("window_size", 3);
     this->declare_parameter("max_range_threshold", 7.0);
     this->declare_parameter("max_drive_range_threshold", 5.0);
-    this->declare_parameter("car_width", 0.60);
+    this->declare_parameter("car_width", 0.6);
     this->declare_parameter("angle_cutoff", 1.5);
     this->declare_parameter("disp_threshold", 0.4);
     this->declare_parameter("bubble_dist_threshold", 6.0);
