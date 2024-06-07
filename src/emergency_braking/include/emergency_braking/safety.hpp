@@ -12,8 +12,8 @@ class Safety : public rclcpp::Node {
 public:
     Safety();
 
-private:
     double speed;
+    bool emergency_braking;
 
     rclcpp::Publisher<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr publisher_;
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_subscription_;
