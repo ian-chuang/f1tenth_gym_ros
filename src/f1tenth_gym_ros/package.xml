@@ -4,7 +4,7 @@
   <name>f1tenth_gym_ros</name>
   <version>0.0.0</version>
   <description>Bridge for using f1tenth_gym in ROS2</description>
-  <maintainer email="billyzheng.bz@gmail.com">Billy Zheng</maintainer>
+  <maintainer email="fake gmail">Fake Email</maintainer>
   <license>MIT</license>
 
   <exec_depend>geometry_msgs</exec_depend>

@@ -46,14 +46,6 @@ RUN git clone https://github.com/f1tenth/f1tenth_gym
 RUN cd f1tenth_gym && \
     pip3 install -e .
 
-# Raceline Optimization
-RUN git clone https://github.com/ian-chuang/Raceline-Optimization
-# Create a virtual environment and install dependencies
-RUN cd Raceline-Optimization && \ 
-    python3 -m venv venv && \
-    source venv/bin/activate && \
-    pip3 install -r requirements.txt
-
 # particle filter dependencies
 RUN git clone https://github.com/f1tenth/range_libc
 RUN cd range_libc/pywrapper && \
@@ -71,6 +63,9 @@ RUN source /opt/ros/foxy/setup.bash && \
 # source in bashrc
 RUN echo 'source /opt/ros/foxy/setup.bash' >> ~/.bashrc
 RUN echo 'source /sim_ws/install/local_setup.bash' >> ~/.bashrc
+
+# move run_tests.sh to /sim_ws
+COPY ./run_tests.sh /sim_ws/run_tests.sh
 
 WORKDIR '/sim_ws'
 ENTRYPOINT ["/bin/bash"]

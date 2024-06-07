@@ -3,8 +3,8 @@
 <package format="3">
   <name>emergency_braking</name>
   <version>0.0.0</version>
-  <description>Automatic Emergency Braking at University of Pennsylvania</description>
-  <maintainer email="s36gong@uwaterloo.ca">Steven Gong</maintainer>
+  <description>Automatic Emergency Braking</description>
+  <maintainer email="fake@gmail.com">Fake Name</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

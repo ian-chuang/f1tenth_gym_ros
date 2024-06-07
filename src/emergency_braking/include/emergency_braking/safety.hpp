@@ -1,6 +1,8 @@
 #ifndef SAFETY_HPP
 #define SAFETY_HPP
 
+// used https://github.com/CL2-UWaterloo/f1tenth_ws/tree/main/src/safety_node as reference
+
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/rclcpp.hpp"
