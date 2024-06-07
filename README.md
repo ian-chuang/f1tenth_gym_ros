@@ -24,7 +24,7 @@ This guide will walk you through the steps to set up and run the UC Davis F1Tent
 3. **Start Docker Container:**
     - Open the terminal in VS Code.
     - Navigate to the repository folder using the `cd /path/to/f1tenth_gym_ros` command.
-    - Type `docker-compose up` in the terminal.
+    - Type `docker-compose up` in the terminal. Try `docker compose up` if the previous command didn't work.
 
 4. **Attach VS Code to Docker Container:**
     - Navigate to the Docker tab in VS Code.
